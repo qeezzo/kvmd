@@ -49,6 +49,11 @@ export function Keyboard(__recordWsEvent) {
 		$("stream-window").onfocus = __updateOnlineLeds;
 		$("stream-window").onblur = __updateOnlineLeds;
 
+		$("webcam-window").onkeydown = (event) => __keyboardHandler(event, true);
+		$("webcam-window").onkeyup = (event) => __keyboardHandler(event, false);
+		$("webcam-window").onfocus = __updateOnlineLeds;
+		$("webcam-window").onblur = __updateOnlineLeds;
+
 		window.addEventListener("focusin", __updateOnlineLeds);
 		window.addEventListener("focusout", __updateOnlineLeds);
 

@@ -1,0 +1,18 @@
+li(id="webcam-dropdown" class="right")
+	a(class="menu-button" href="#")
+		+navbar_led("webcam-drop", "321", "feature-disabled")
+		span Webcam
+	div(id="webcam-menu" class="menu")
+		table(class="kv")
+			tr
+				+menu_switch_notable("webcam-radio", "Enable web camera", true, false)
+			tr
+				+menu_switch_notable("micro-radio", "Enable micro", true, false)
+			hr
+			div(class="text" style="margin: 20px")
+				textarea(id="hid-pak-text" data-focus placeholder="Enter webcam stream URL")
+			div(class="text" style="margin: 20px")
+				span Reciever ID:
+				span(id="reciever-id")
+			button(id="copy-reciever-id" class="row100") Copy Reciever ID
+	div(id="webcam-drop" class="feature-disabled")
