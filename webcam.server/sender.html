@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Sender</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css" />
+
+    <!-- Peer.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"
+        integrity="sha512-y23HV23IWVEWlGpIez8Kvr87ZT16V9gICf5dfqu5rjxs7ip66pcIf87/uFbxn9tStGCgohZeIktIAHg9fjubsw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"
+        integrity="sha512-xbQU0+iHqhVt7VIXi6vBJKPh3IQBF5B84sSHdjKiSccyX/1ZI7Vnkt2/8y8uruj63/DVmCxfUNohPNruthTEQA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        video {
+            width: 100%;
+            height: 50vh;
+        }
+
+        .control-buttons {
+            margin-top: 10px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h1 class="text-center">Video Sender</h1>
+
+        <div class="row mt-3">
+            <div class="col-md-12">
+                <h2>Your Video</h2>
+                <video id="localVideo" autoplay playsinline muted></video>
+            </div>
+        </div>
+
+        <div class="row mt-3 control-buttons">
+            <div class="col-md-12 text-center">
+                <button id="startButton" class="btn btn-success">Start Streaming</button>
+                <button id="muteButton" class="btn btn-warning">Mute</button>
+                <button id="cameraButton" class="btn btn-warning">Turn Off Camera</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <!-- WebRTC Adapter -->
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        const localVideo = document.getElementById("localVideo");
+        const peer = new Peer();
+        const socket = io();
+        let localStream;
+        let isMuted = false;
+        let isCameraOn = true;
+
+        peer.on('open', (id) => {
+            console.log(`My peer ID is: ${id}`);
+        });
+
+        document.getElementById("startButton").addEventListener("click", () => {
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+                localVideo.srcObject = stream;
+                localStream = stream;
+                const remotePeerID = prompt("Enter ID of remote peer:");
+                const call = peer.call(remotePeerID, localStream);
+
+                call.on("stream", (remoteStream) => {
+                    console.log("Stream received");
+                });
+            }).catch((error) => {
+                console.log(error);
+            });
+        });
+
+        document.getElementById("muteButton").addEventListener("click", () => {
+            isMuted = !isMuted;
+            localStream.getAudioTracks()[0].enabled = !isMuted;
+            document.getElementById("muteButton").textContent = isMuted ? "Unmute" : "Mute";
+        });
+
+        document.getElementById("cameraButton").addEventListener("click", () => {
+            isCameraOn = !isCameraOn;
+            localStream.getVideoTracks()[0].enabled = isCameraOn;
+            document.getElementById("cameraButton").textContent = isCameraOn ? "Turn Off Camera" : "Turn On Camera";
+        });
+    </script>
+</body>
+
+</html>

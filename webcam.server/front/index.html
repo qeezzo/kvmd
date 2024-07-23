@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Chat</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css" />
+
+    <!-- Peer.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.4.7/peerjs.min.js"
+        integrity="sha512-y23HV23IWVEWlGpIez8Kvr87ZT16V9gICf5dfqu5rjxs7ip66pcIf87/uFbxn9tStGCgohZeIktIAHg9fjubsw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+    <!-- Socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.js"
+        integrity="sha512-xbQU0+iHqhVt7VIXi6vBJKPh3IQBF5B84sSHdjKiSccyX/1ZI7Vnkt2/8y8uruj63/DVmCxfUNohPNruthTEQA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Custom CSS -->
+    <style>
+        /* Set width of video elements */
+        video {
+            width: 100%;
+        }
+
+        /* Set height of video elements based on screen size */
+        @media (max-width: 767.98px) {
+            video {
+                height: 40vw;
+            }
+        }
+
+        @media (min-width: 768px) {
+            video {
+                height: 50vh;
+            }
+        }
+
+        /* Set margin of call and hangup buttons */
+        #callButton,
+        #hangupButton {
+            margin-top: 10px;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div class="container mt-3">
+        <h1 class="text-center">Video Chat</h1>
+        <div id="myId"></div>
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <h2>Your Video</h2>
+                <video id="localVideo" autoplay playsinline muted></video>
+            </div>
+
+            <div class="col-md-6">
+                <h2>Remote Video</h2>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-12 text-center">
+                <button id="callButton" class="btn btn-success">Call</button>
+                <button id="hangupButton" class="btn btn-danger" disabled>Hang Up</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <!-- WebRTC Adapter -->
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+    <!-- JavaScript -->
+    <script>
+        // Get video elements
+        const localVideo = document.getElementById("localVideo");
+        const remoteVideo = document.getElementById("remoteVideo");
+        // Initialize Peer object
+        const peer = new Peer();
+
+        // Initialize socket.io object
+        const socket = io();
+        peer.on('open', (id) => {
+            const myId = document.getElementById('myId');
+            localPeerId = id;
+            myId.innerText = `My ID: ${id}`;
+
+        });
+
+
+        // Get user media
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((stream) => {
+            // Add stream to local video element
+            localVideo.srcObject = stream;
+
+            // Save stream to variable for later use
+            localStream = stream;
+
+            // Listen for incoming call
+            peer.on("call", (call) => {
+                // Answer call
+                call.answer(localStream);
+
+                // Add stream to remote video element
+                call.on("stream", (remoteStream) => {
+                    remoteVideo.srcObject = remoteStream;
+                });
+
+                // Enable hangup button
+                document.getElementById("hangupButton").disabled = false;
+            });
+
+            // Add event listener for call button
+            document.getElementById("callButton").addEventListener("click", () => {
+                // Get ID of remote peer
+                const remotePeerID = prompt("Enter ID of remote peer:");
+
+                // Call remote peer
+                const call = peer.call(remotePeerID, localStream);
+
+                // Add stream to remote video element
+                call.on("stream", (remoteStream) => {
+                    remoteVideo.srcObject = remoteStream;
+                });
+
+                // Add event listener for hangup button
+                document.getElementById("hangupButton").addEventListener("click", () => {
+                    // End call
+                    call.close();
+
+                    // Disable hangup button
+                    document.getElementById("hangupButton").disabled = true;
+                });
+
+
+                // Enable hangup button
+                document.getElementById("hangupButton").disabled = false;
+            });
+
+        }).catch((error) => {
+            console.log(error);
+        });
+
+    </script>
+</body>
+
+</html>

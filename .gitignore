@@ -19,3 +19,5 @@
 *.pyc
 *.swp
 /venv/
+node_modules
+settings.json

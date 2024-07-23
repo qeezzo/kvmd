@@ -99,7 +99,9 @@ export function Streamer() {
 		tools.el.setOnClick($("stream-reset-button"), __clickResetButton);
 
 		$("stream-window").show_hook = () => __applyState(__state);
+		$("webcam-window").show_hook = () => __applyState(__state);
 		$("stream-window").close_hook = () => __applyState(null);
+		$("webcam-window").close_hook = () => __applyState(null);
 	};
 
 	/************************************************************************/
@@ -224,7 +226,7 @@ export function Streamer() {
 	};
 
 	var __setInfo = function(is_active, online, text) {
-		$("stream-box").classList.toggle("stream-box-offline", !online);
+		$("webcam-box").classList.toggle("webcam-box-offline", !online);
 		let el_grab = document.querySelector("#stream-window-header .window-grab");
 		let el_info = $("stream-info");
 		let title = `${__streamer.getName()} &ndash; `;
