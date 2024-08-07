@@ -151,7 +151,11 @@ backup=(
 package_kvmd() {
 	install=$pkgname.install
 
+	pwd
+	ls
+	
 	# cd "$srcdir/kvmd-$pkgver"
+	cd "$srcdir"
 	pip install --root="$pkgdir" --no-deps .
 
 	install -Dm755 -t "$pkgdir/usr/bin" scripts/kvmd-{bootconfig,gencert,certbot}
