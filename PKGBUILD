@@ -208,6 +208,10 @@ for _variant in "${_variants[@]}"; do
 	# cd \"kvmd-\$pkgver\" -- removed
 	eval "package_kvmd-platform-$_platform-$_board() {
 
+		pwd
+
+		cd ..
+
 		pkgdesc=\"PiKVM platform configs - $_platform for $_board\"
 		depends=(kvmd=$pkgver-$pkgrel \"linux-rpi-pikvm>=6.6.21-3\")
 
