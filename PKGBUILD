@@ -82,8 +82,7 @@ depends=(
 	"v4l-utils>=1.22.1-1"
 	"nginx-mainline>=1.25.1"
 	openssl
-	sudo
-	iptables
+	sudo iptables
 	iproute2
 	dnsmasq
 	ipmitool
@@ -155,7 +154,10 @@ package_kvmd() {
 	ls
 	
 	# cd "$srcdir/kvmd-$pkgver"
-	cd "$srcdir"
+	echo "srcdir: $srcdir"
+
+	cd ..
+
 	pip install --root="$pkgdir" --no-deps .
 
 	install -Dm755 -t "$pkgdir/usr/bin" scripts/kvmd-{bootconfig,gencert,certbot}
