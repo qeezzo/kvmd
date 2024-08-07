@@ -134,7 +134,7 @@ makedepends=(
 	python-pip
 )
 # source=("$url/archive/v$pkgver.tar.gz")
-md5sums=(SKIP)
+# md5sums=(SKIP)
 backup=(
 	etc/kvmd/{override,logging,auth,meta}.yaml
 	etc/kvmd/{ht,ipmi,vnc}passwd
