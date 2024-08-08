@@ -3,32 +3,32 @@
 
 
 _variants=(
-	# v0-hdmi:zero2w
-	# v0-hdmi:rpi2
-	# v0-hdmi:rpi3
+	v0-hdmi:zero2w
+	v0-hdmi:rpi2
+	v0-hdmi:rpi3
 
-	# v0-hdmiusb:zero2w
-	# v0-hdmiusb:rpi2
-	# v0-hdmiusb:rpi3
+	v0-hdmiusb:zero2w
+	v0-hdmiusb:rpi2
+	v0-hdmiusb:rpi3
 
-	# v1-hdmi:zero2w
-	# v1-hdmi:rpi2
-	# v1-hdmi:rpi3
+	v1-hdmi:zero2w
+	v1-hdmi:rpi2
+	v1-hdmi:rpi3
 
-	# v1-hdmiusb:zero2w
-	# v1-hdmiusb:rpi2
-	# v1-hdmiusb:rpi3
+	v1-hdmiusb:zero2w
+	v1-hdmiusb:rpi2
+	v1-hdmiusb:rpi3
 
-	# v2-hdmi:zero2w
-	# v2-hdmi:rpi3
+	v2-hdmi:zero2w
+	v2-hdmi:rpi3
 	v2-hdmi:rpi4
 
-	# v2-hdmiusb:rpi4
+	v2-hdmiusb:rpi4
 
-	# v3-hdmi:rpi4
+	v3-hdmi:rpi4
 
-	# v4mini-hdmi:rpi4
-	# v4plus-hdmi:rpi4
+	v4mini-hdmi:rpi4
+	v4plus-hdmi:rpi4
 )
 
 
@@ -42,7 +42,7 @@ pkgbase=kvmd
 pkgver=4.2
 pkgrel=1
 pkgdesc="The main PiKVM daemon"
-url="https://github.com/qeezzo/kvmd"
+url="https://github.com/pikvm/kvmd"
 license=(GPL)
 arch=(any)
 depends=(
@@ -150,12 +150,6 @@ backup=(
 package_kvmd() {
 	install=$pkgname.install
 
-	pwd
-	ls
-	
-	# cd "$srcdir/kvmd-$pkgver"
-	echo "srcdir: $srcdir"
-
 	cd ..
 
 	pip install --root="$pkgdir" --no-deps .
@@ -205,10 +199,7 @@ for _variant in "${_variants[@]}"; do
 	_board=${_variant#*:}
 	_base=${_platform%-*}
 	_video=${_platform#*-}
-	# cd \"kvmd-\$pkgver\" -- removed
 	eval "package_kvmd-platform-$_platform-$_board() {
-
-		pwd
 
 		cd ..
 
