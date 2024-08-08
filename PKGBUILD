@@ -133,8 +133,8 @@ makedepends=(
 	python-setuptools
 	python-pip
 )
-source=("$url/archive/v$pkgver.tar.gz")
-md5sums=(SKIP)
+# source=("$url/archive/v$pkgver.tar.gz")
+# md5sums=(SKIP)
 backup=(
 	etc/kvmd/{override,logging,auth,meta}.yaml
 	etc/kvmd/{ht,ipmi,vnc}passwd
@@ -151,7 +151,8 @@ backup=(
 package_kvmd() {
 	install=$pkgname.install
 
-	cd "$srcdir/kvmd-$pkgver"
+	cd ..
+
 	pip install --root="$pkgdir" --no-deps .
 
 	install -Dm755 -t "$pkgdir/usr/bin" scripts/kvmd-{bootconfig,gencert,certbot}
@@ -200,7 +201,8 @@ for _variant in "${_variants[@]}"; do
 	_base=${_platform%-*}
 	_video=${_platform#*-}
 	eval "package_kvmd-platform-$_platform-$_board() {
-		cd \"kvmd-\$pkgver\"
+
+		cd ..
 
 		pkgdesc=\"PiKVM platform configs - $_platform for $_board\"
 		depends=(kvmd=$pkgver-$pkgrel \"linux-rpi-pikvm>=6.6.21-3\")
