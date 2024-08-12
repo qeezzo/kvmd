@@ -838,6 +838,83 @@
               </table>
         </div>
       </li>
+      <li class="right" id="shortcuts-dropdown"><a class="menu-button" href="#">Shortcuts</a>
+        <div class="menu" id="shortcuts-menu">
+          <div class="text"><b>Quick keyboard shortcuts<br></b><sub>Also see <i>System &rarr; Show keyboard</i></sub></div>
+          <hr>
+          <div class="buttons">
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="CapsLock">&bull; Caps Lock &nbsp;<img class="inline-lamp hid-keyboard-caps-led led-gray" src="/share/svg/led-square.svg"></button>
+              <button class="row50" data-force-hide-menu data-shortcut="MetaLeft">&bull; Left Win</button>
+            </div>
+            <hr>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="AltLeft ShiftLeft">&bull; Alt+Shift</button>
+              <button class="row50" data-force-hide-menu data-shortcut="ControlLeft KeyW">&bull; Ctrl+W</button>
+            </div>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="ControlLeft ShiftLeft">&bull; Ctrl+Shift</button>
+              <button class="row50" data-force-hide-menu data-shortcut="AltLeft Tab">&bull; Alt+Tab</button>
+            </div>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="ShiftLeft ShiftRight">&bull; Shift+Shift</button>
+              <button class="row50" data-force-hide-menu data-shortcut="AltLeft Enter">&bull; Alt+Enter</button>
+            </div>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="MetaLeft Space">&bull; Win+Space</button>
+              <button class="row50" data-force-hide-menu data-shortcut="AltLeft F4">&bull; Alt+F4</button>
+            </div>
+            <hr>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="ControlLeft AltLeft F1">&bull; Ctrl+Alt+F1</button>
+              <button class="row50" data-force-hide-menu data-shortcut="MetaLeft KeyL">&bull; Win+L</button>
+            </div>
+            <div class="buttons-row">
+              <button class="row50" data-force-hide-menu data-shortcut="ControlLeft AltLeft F2">&bull; Ctrl+Alt+F2</button>
+              <button class="row50" data-force-hide-menu data-shortcut="PrintScreen">&bull; Print Screen</button>
+            </div>
+            <hr>
+            <div class="buttons-row">
+              <button data-force-hide-menu data-shortcut="ControlLeft AltLeft Delete">&bull; Ctrl+Alt+Del</button>
+            </div>
+          </div>
+          <hr>
+          <div class="text">
+            &darr; &bull; Alt+SysRq+... <sup><i>linux magic
+            <a target="_blank" href="https://www.kernel.org/doc/html/latest/admin-guide/sysrq.html">help</a></i></sup>
+          </div>
+          <hr>
+          <div class="buttons">
+            <div class="buttons-row">
+              <button class="row25" data-shortcut="AltLeft PrintScreen KeyF" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Call the OOM killer to kill a memory hog process">F</button>
+              <button class="row25" data-shortcut="AltLeft PrintScreen KeyM" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Dump current memory info to the console">M</button>
+              <button class="row25" data-shortcut="AltLeft PrintScreen KeyD" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Show all locks that are held">D</button>
+              <button class="row25" data-shortcut="AltLeft PrintScreen KeyT" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Dump a list of current tasks and their information to the console">T</button>
+            </div>
+            <hr>
+            <div class="buttons-row">
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyR" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Turn off keyboard raw mode, set it to XLATE">R</button>
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyE" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Send a SIGTERM to all processes, except for init">E</button>
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyI" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Send a SIGKILL to all processes, except for init">I</button>
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyS" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Attempt to sync all mounted filesystems">S</button>
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyU" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Attempt to remount all mounted filesystems read-only">U</button>
+              <button class="row16" data-shortcut="AltLeft PrintScreen KeyB" data-shortcut-confirm="hid-sysrq-ask-switch" style="text-align: center;" title="Immediately reboot the system without syncing or unmounting disks">B</button>
+            </div>
+          </div>
+          <hr>
+              <table class="kv">
+                <tr>
+                      <td>Ask the magic confirmation:</td>
+                      <td align="right">
+                        <div class="switch-box">
+                          <input checked type="checkbox" id="hid-sysrq-ask-switch">
+                          <label for="hid-sysrq-ask-switch"><span class="switch-inner"></span><span class="switch"></span></label>
+                        </div>
+                      </td>
+                </tr>
+              </table>
+        </div>
+      </li>
       <li class="right feature-disabled" id="gpio-dropdown"><a class="menu-button" id="gpio-menu-button" href="#"><span>GPIO</span></a>
         <div class="menu" id="gpio-menu"></div>
       </li>
