@@ -838,10 +838,58 @@
               </table>
         </div>
       </li>
+      <li class="right" id="webcam-dropdown"><a class="menu-button" href="#"><img class="feature-disabled" id="webcam-drop" src="/share/svg/321.svg"><span>Webcam</span></a>
+        <div class="menu" id="webcam-menu">
+          <table class="kv">
+            <tr>
+                  <td>Enable web camera:</td>
+                  <td align="right">
+                    <div class="switch-box">
+                      <input type="checkbox" id="webcam-radio">
+                      <label for="webcam-radio"><span class="switch-inner"></span><span class="switch"></span></label>
+                    </div>
+                  </td>
+            </tr>
+            <tr>
+                  <td>Enable micro:</td>
+                  <td align="right">
+                    <div class="switch-box">
+                      <input type="checkbox" id="micro-radio">
+                      <label for="micro-radio"><span class="switch-inner"></span><span class="switch"></span></label>
+                    </div>
+                  </td>
+            </tr>
+            <hr>
+            <div class="text" style="margin: 20px">
+              <textarea id="hid-pak-text" data-focus placeholder="Enter webcam stream URL"></textarea>
+            </div>
+            <div class="text" style="margin: 20px"><span>Reciever ID:</span><span id="reciever-id"></span></div>
+            <button class="row100" id="copy-reciever-id">Copy Reciever ID</button>
+          </table>
+        </div>
+        <div class="feature-disabled" id="webcam-drop"></div>
+      </li>
       <li class="right feature-disabled" id="gpio-dropdown"><a class="menu-button" id="gpio-menu-button" href="#"><span>GPIO</span></a>
         <div class="menu" id="gpio-menu"></div>
       </li>
     </ul>
+    <div class="window" id="stream-webcam-window">
+      <div class="hidden" id="stream-webcam-selection"></div>
+    </div>
+    <div class="window window-resizable" id="webcam-window">
+      <div class="window-header" id="stream-window-header">
+        <div class="window-grab">Web Cam</div>
+        <button class="window-button-close"><b>&times;</b></button>
+        <button class="window-button-maximize">&#9744;</button>
+        <button class="window-button-original">&bull;</button>
+        <button class="window-button-enter-full-tab">&#9650;</button>
+        <button class="window-button-full-screen">&#10530;</button>
+      </div>
+      <button class="window-button-exit-full-tab">&#9660;</button>
+      <div class="webcam-box-online" id="webcam-box">
+        <video id="webcam-video" autoplay playsinline></video>
+      </div>
+    </div>
     <div class="window" id="stream-ocr-window">
       <div class="hidden" id="stream-ocr-selection"></div>
     </div>
