@@ -358,9 +358,9 @@ def _cmd_start(config: Section) -> None:  # pylint: disable=too-many-statements,
                 logger.info("===== MSD Extra: %d =====", count + 1)
                 gc.add_msd(cod.drives.start, "root", **cod.drives.default._unpack())
 
-    if config.kvmd.uvc.type == "otg":
-        logger.info("===== UVC Camera =====")
-        gc.add_uvc(cod.uvc.start)
+    # if config.kvmd.uvc.type == "otg":
+    logger.info("===== UVC Camera =====")
+    gc.add_uvc(cod.uvc.start)
 
     logger.info("===== Preparing complete =====")
 
