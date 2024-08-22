@@ -46,7 +46,7 @@ from .hid.mouse import make_mouse_hid
 
 # =====
 def _makekdirs(path: str) -> None:
-    get_logger().info("MAKEDIRS --- %s", path)
+    get_logger().info("MKDIRS -- %s", path)
     os.makedirs(path)
 
 def _mkdir(path: str) -> None:
@@ -236,11 +236,11 @@ class _GadgetConfig:
         # Create symbolic links
         _mkdir(f"{func_path}/streaming/header/h")
 
-        _symlink(f"{func_path}/streaming/uncompressed/u", f"{func_path}/streaming/header/h/u")
-        _symlink(f"{func_path}/streaming/mjpeg/m", f"{func_path}/streaming/header/h/m")
-        _symlink(f"{func_path}/streaming/header/h", f"{func_path}/streaming/class/fs")
-        _symlink(f"{func_path}/streaming/header/h", f"{func_path}/streaming/class/hs")
-        _symlink(f"{func_path}/control/header/h", f"{func_path}/control/class/fs")
+        _symlink(f"{func_path}/streaming/uncompressed/u",   f"{func_path}/streaming/header/h/u")
+        _symlink(f"{func_path}/streaming/mjpeg/m",          f"{func_path}/streaming/header/h/m")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/fs/h")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/hs/h")
+        _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/fs/h")
 
         # _mkdir(f"{func_path}/streaming/class")
         # for cls in ["fs", "hs", "ss"]:
