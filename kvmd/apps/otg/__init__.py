@@ -45,6 +45,10 @@ from .hid.mouse import make_mouse_hid
 
 
 # =====
+def _makekdirs(path: str) -> None:
+    get_logger().info("MAKEDIRS --- %s", path)
+    os.makedirs(path)
+
 def _mkdir(path: str) -> None:
     get_logger().info("MKDIR --- %s", path)
     os.mkdir(path)
@@ -87,7 +91,7 @@ def _write(path: str, value: (str | int), optional: bool=False) -> None:
 def _create_frame(func_path: str, width: int, height: int, format: str, name: str):
     wdir = f"{func_path}/streaming/{format}/{name}/{height}p"
     # get_logger().info("WDIR --- %s", wdir)
-    _mkdir(wdir)
+    _makekdirs(wdir)
 
     # Define paths
     wWidth_path = os.path.join(wdir, "wWidth")
