@@ -144,6 +144,7 @@ def init(
             load_atx=True,
             load_msd=True,
             load_gpio=True,
+            load_uvc=True
         ))
         raise SystemExit()
     config = _init_config(options.config, options.set_options, **load)
@@ -255,6 +256,7 @@ def _patch_dynamic(  # pylint: disable=too-many-locals
     load_atx: bool=False,
     load_msd: bool=False,
     load_gpio: bool=False,
+    load_uvc: bool=False,
 ) -> bool:
 
     rebuild = False
@@ -431,6 +433,11 @@ def _get_config_scheme() -> dict:
                 "type": Option("", type=valid_stripped_string_not_empty),
                 # Dynamic content
             },
+            
+            "uvc": {
+                "type": Option("", type=valid_stripped_string_not_empty),
+                # Dynamic content
+            },
 
             "streamer": {
                 "forever": Option(False, type=valid_bool),
@@ -574,6 +581,10 @@ def _get_config_scheme() -> dict:
                         "removable": Option(True,  type=valid_bool),
                         "fua":       Option(True,  type=valid_bool),
                     },
+                },
+                
+                "uvc": {
+                    "start":    Option(True, type=valid_bool),
                 },
 
                 "serial": {
