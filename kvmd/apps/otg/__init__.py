@@ -45,9 +45,10 @@ from .hid.mouse import make_mouse_hid
 
 
 # =====
-def _makekdirs(path: str) -> None:
+def _makedirs(path: str) -> None:
     get_logger().info("MKDIRS -- %s", path)
-    os.makedirs(path)
+    os.makedirs(path, exist_ok=True)
+
 
 def _mkdir(path: str) -> None:
     get_logger().info("MKDIR --- %s", path)
@@ -90,8 +91,7 @@ def _write(path: str, value: (str | int), optional: bool=False) -> None:
 
 def _create_frame(func_path: str, width: int, height: int, format: str, name: str):
     wdir = f"{func_path}/streaming/{format}/{name}/{height}p"
-    # get_logger().info("WDIR --- %s", wdir)
-    _makekdirs(wdir)
+    _makedirs(wdir)
 
     # Define paths
     wWidth_path = os.path.join(wdir, "wWidth")
@@ -226,12 +226,36 @@ class _GadgetConfig:
         func_path = join(self.__gadget_path, "functions", func)
 
         _mkdir(func_path)
-        _create_frame(func_path, 640, 360, "uncompressed", "u")
-        _create_frame(func_path, 1280, 720, "uncompressed", "u")
-        _create_frame(func_path, 320, 180, "uncompressed", "u")
+        _create_frame(func_path, 256,  144,  "uncompressed", "u")
+        _create_frame(func_path, 320,  180,  "uncompressed", "u")
+        _create_frame(func_path, 426,  240,  "uncompressed", "u")
+        _create_frame(func_path, 640,  360,  "uncompressed", "u")
+        _create_frame(func_path, 640,  480,  "uncompressed", "u")
+        _create_frame(func_path, 800,  600,  "uncompressed", "u")
+        _create_frame(func_path, 1024, 768,  "uncompressed", "u")
+        _create_frame(func_path, 1280, 720,  "uncompressed", "u")
+        _create_frame(func_path, 1280, 960,  "uncompressed", "u")
+        _create_frame(func_path, 1440, 1080, "uncompressed", "u")
+        _create_frame(func_path, 1536, 864,  "uncompressed", "u")
+        _create_frame(func_path, 1600, 900,  "uncompressed", "u")
+        _create_frame(func_path, 1600, 1200, "uncompressed", "u")
+        _create_frame(func_path, 1920, 1080, "uncompressed", "u")
+
+        _create_frame(func_path, 256,  144,  "mjpeg", "m")
+        _create_frame(func_path, 320,  180,  "mjpeg", "m")
+        _create_frame(func_path, 426,  240,  "mjpeg", "m")
+        _create_frame(func_path, 640,  360,  "mjpeg", "m")
+        _create_frame(func_path, 640,  480,  "mjpeg", "m")
+        _create_frame(func_path, 800,  600,  "mjpeg", "m")
+        _create_frame(func_path, 1024, 768,  "mjpeg", "m")
+        _create_frame(func_path, 1280, 720,  "mjpeg", "m")
+        _create_frame(func_path, 1280, 960,  "mjpeg", "m")
+        _create_frame(func_path, 1440, 1080, "mjpeg", "m")
+        _create_frame(func_path, 1536, 864,  "mjpeg", "m")
+        _create_frame(func_path, 1600, 900,  "mjpeg", "m")
+        _create_frame(func_path, 1600, 1200, "mjpeg", "m")
         _create_frame(func_path, 1920, 1080, "mjpeg", "m")
-        _create_frame(func_path, 640, 480, "mjpeg", "m")
-        _create_frame(func_path, 640, 360, "mjpeg", "m")
+        _create_frame(func_path, 1920, 1080, "mjpeg", "m")
 
         # Create symbolic links
         _mkdir(f"{func_path}/streaming/header/h")
@@ -240,17 +264,10 @@ class _GadgetConfig:
         _symlink(f"{func_path}/streaming/mjpeg/m",          f"{func_path}/streaming/header/h/m")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/fs/h")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/hs/h")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/ss/h")
         _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/fs/h")
+        _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/ss/h")
 
-        # _mkdir(f"{func_path}/streaming/class")
-        # for cls in ["fs", "hs", "ss"]:
-        #     _mkdir(f"{func_path}/streaming/class/{cls}")
-        #     _symlink(f"{func_path}/streaming/header/h", f"{func_path}/streaming/class/{cls}/h")
-
-        # _mkdir(f"{func_path}/control/header/h")
-        # _symlink(f"{func_path}/control/header/h", f"{func_path}/control/class/fs/h")
-        # _symlink(f"{func_path}/control/header/h", f"{func_path}/control/class/ss/h")
-                
         # Include an Extension Unit if the kernel supports that
         # if os.path.isdir(f"{func_path}/control/extensions"):
         #     _mkdir(f"{func_path}/control/extensions/xu.0")
@@ -271,7 +288,7 @@ class _GadgetConfig:
 
         # Set the packet size
         # _write(f"{func_path}/streaming_maxpacket", 3072)
-        # _write(f"{func_path}/streaming_maxpacket", 2048)
+        _write(f"{func_path}/streaming_maxpacket", 2048) # usb 2.0 ideal
         # _write(f"{func_path}/streaming_maxpacket", 1024)
 
         # Create symbolic link to target config
@@ -329,7 +346,8 @@ def _cmd_start(config: Section) -> None:  # pylint: disable=too-many-statements,
     _mkdir(profile_path)
     _mkdir(join(profile_path, "strings/0x409"))
     _write(join(profile_path, "strings/0x409/configuration"), f"Config 1: {config.otg.config}")
-    _write(join(profile_path, "MaxPower"), config.otg.max_power)
+    # _write(join(profile_path, "MaxPower"), config.otg.max_power)
+    _write(join(profile_path, "MaxPower"), 800)
     if config.otg.remote_wakeup:
         # XXX: Should we use MaxPower=100 with Remote Wakeup?
         _write(join(profile_path, "bmAttributes"), "0xA0")
