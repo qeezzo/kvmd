@@ -265,6 +265,9 @@ class _GadgetConfig:
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/fs/h")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/hs/h")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/ss/h")
+
+
+        _makedirs(f"{func_path}/control/header/h")
         _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/fs/h")
         _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/ss/h")
 

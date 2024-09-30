@@ -573,7 +573,7 @@ def _get_config_scheme() -> dict:
                 },
 
                 "msd": {
-                    "start": Option(True, type=valid_bool),
+                    "start": Option(False, type=valid_bool),
                     "default": {
                         "stall":     Option(False, type=valid_bool),
                         "cdrom":     Option(True,  type=valid_bool),
