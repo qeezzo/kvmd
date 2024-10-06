@@ -45,6 +45,11 @@ from .hid.mouse import make_mouse_hid
 
 
 # =====
+def _makedirs(path: str) -> None:
+    get_logger().info("MKDIRS -- %s", path)
+    os.makedirs(path, exist_ok=True)
+
+
 def _mkdir(path: str) -> None:
     get_logger().info("MKDIR --- %s", path)
     os.mkdir(path)
@@ -84,6 +89,27 @@ def _write(path: str, value: (str | int), optional: bool=False) -> None:
         file.write(str(value))
 
 
+def _create_frame(func_path: str, width: int, height: int, format: str, name: str):
+    wdir = f"{func_path}/streaming/{format}/{name}/{height}p"
+    _makedirs(wdir)
+
+    # Define paths
+    wWidth_path = os.path.join(wdir, "wWidth")
+    wHeight_path = os.path.join(wdir, "wHeight")
+    dwDefaultFrameInterval_path = os.path.join(wdir, "dwDefaultFrameInterval")
+    dwMinBitRate_path = os.path.join(wdir, "dwMinBitRate")
+    dwMaxBitRate_path = os.path.join(wdir, "dwMaxBitRate")
+    dwMaxVideoFrameBufferSize_path = os.path.join(wdir, "dwMaxVideoFrameBufferSize")
+    dwFrameInterval_path = os.path.join(wdir, "dwFrameInterval")
+
+    _write(wWidth_path, width)
+    _write(wHeight_path, height)
+    _write(dwDefaultFrameInterval_path, 333333)
+    _write(dwMinBitRate_path, width * height * 80)
+    _write(dwMaxBitRate_path, width * height * 160)
+    _write(dwMaxVideoFrameBufferSize_path, width * height * 2)
+    _write(dwFrameInterval_path, "333333\n400000\n666666")
+
 def _write_bytes(path: str, data: bytes) -> None:
     get_logger().info("WRITE --- %s", path)
     with open(path, "wb") as file:
@@ -108,6 +134,7 @@ class _GadgetConfig:
         self.__meta_path = meta_path
         self.__hid_instance = 0
         self.__msd_instance = 0
+        self.__uvc_instance = 0
         _mkdir(meta_path)
 
     def add_serial(self, start: bool) -> None:
@@ -192,6 +219,86 @@ class _GadgetConfig:
         self.__create_meta(func, name)
         self.__msd_instance += 1
 
+    def add_uvc(self, start: bool) -> None:
+        # https://gist.github.com/ikester/eeb739dd65f82198241daeac097967ab
+        # https://gitlab.freedesktop.org/camera/uvc-gadget/-/blob/master/scripts/uvc-gadget.sh?ref_type=heads
+        func = f"uvc.usb{self.__uvc_instance}"
+        func_path = join(self.__gadget_path, "functions", func)
+
+        _mkdir(func_path)
+        _create_frame(func_path, 256,  144,  "uncompressed", "u")
+        _create_frame(func_path, 320,  180,  "uncompressed", "u")
+        _create_frame(func_path, 426,  240,  "uncompressed", "u")
+        _create_frame(func_path, 640,  360,  "uncompressed", "u")
+        _create_frame(func_path, 640,  480,  "uncompressed", "u")
+        _create_frame(func_path, 800,  600,  "uncompressed", "u")
+        _create_frame(func_path, 1024, 768,  "uncompressed", "u")
+        _create_frame(func_path, 1280, 720,  "uncompressed", "u")
+        _create_frame(func_path, 1280, 960,  "uncompressed", "u")
+        _create_frame(func_path, 1440, 1080, "uncompressed", "u")
+        _create_frame(func_path, 1536, 864,  "uncompressed", "u")
+        _create_frame(func_path, 1600, 900,  "uncompressed", "u")
+        _create_frame(func_path, 1600, 1200, "uncompressed", "u")
+        _create_frame(func_path, 1920, 1080, "uncompressed", "u")
+
+        _create_frame(func_path, 256,  144,  "mjpeg", "m")
+        _create_frame(func_path, 320,  180,  "mjpeg", "m")
+        _create_frame(func_path, 426,  240,  "mjpeg", "m")
+        _create_frame(func_path, 640,  360,  "mjpeg", "m")
+        _create_frame(func_path, 640,  480,  "mjpeg", "m")
+        _create_frame(func_path, 800,  600,  "mjpeg", "m")
+        _create_frame(func_path, 1024, 768,  "mjpeg", "m")
+        _create_frame(func_path, 1280, 720,  "mjpeg", "m")
+        _create_frame(func_path, 1280, 960,  "mjpeg", "m")
+        _create_frame(func_path, 1440, 1080, "mjpeg", "m")
+        _create_frame(func_path, 1536, 864,  "mjpeg", "m")
+        _create_frame(func_path, 1600, 900,  "mjpeg", "m")
+        _create_frame(func_path, 1600, 1200, "mjpeg", "m")
+        _create_frame(func_path, 1920, 1080, "mjpeg", "m")
+        _create_frame(func_path, 1920, 1080, "mjpeg", "m")
+
+        # Create symbolic links
+        _mkdir(f"{func_path}/streaming/header/h")
+
+        _symlink(f"{func_path}/streaming/uncompressed/u",   f"{func_path}/streaming/header/h/u")
+        _symlink(f"{func_path}/streaming/mjpeg/m",          f"{func_path}/streaming/header/h/m")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/fs/h")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/hs/h")
+        _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/ss/h")
+        _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/fs/h")
+        _symlink(f"{func_path}/control/header/h",           f"{func_path}/control/class/ss/h")
+
+        # Include an Extension Unit if the kernel supports that
+        # if os.path.isdir(f"{func_path}/control/extensions"):
+        #     _mkdir(f"{func_path}/control/extensions/xu.0")
+
+        #     # Set the bUnitID of the Processing Unit as the XU's source
+        #     _write(f"{func_path}/control/extensions/xu.0/baSourceID", 2)
+
+        #     # Set this XU as the source for the default output terminal
+        #     shutil.copyfile(f"{func_path}/control/extensions/xu.0/bUnitID",
+        #                     f"{func_path}/control/terminal/output/default/bSourceID")
+
+        #     # Flag some arbitrary controls
+        #     _write(f"{func_path}/control/extensions/xu.0/bmControls", 0x55)
+
+        #     # Set the GUID
+        #     _write_bytes(f"{func_path}/control/extensions/xu.0/guidExtensionCode",
+        #                  b"\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f\x10")
+
+        # Set the packet size
+        # _write(f"{func_path}/streaming_maxpacket", 3072)
+        _write(f"{func_path}/streaming_maxpacket", 2048) # usb 2.0 ideal
+        # _write(f"{func_path}/streaming_maxpacket", 1024)
+
+        # Create symbolic link to target config
+        if start:
+            _symlink(func_path, join(self.__profile_path, func))
+        name = ("UVC Camera" if self.__uvc_instance == 0 else f"USB Video Class #{self.__uvc_instance}")
+        self.__create_meta(func, name)
+
+        self.__uvc_instance += 1
+
     def __create_meta(self, func: str, name: str) -> None:
         _write(join(self.__meta_path, f"{func}@meta.json"), json.dumps({"func": func, "name": name}))
 
@@ -239,7 +346,8 @@ def _cmd_start(config: Section) -> None:  # pylint: disable=too-many-statements,
     _mkdir(profile_path)
     _mkdir(join(profile_path, "strings/0x409"))
     _write(join(profile_path, "strings/0x409/configuration"), f"Config 1: {config.otg.config}")
-    _write(join(profile_path, "MaxPower"), config.otg.max_power)
+    # _write(join(profile_path, "MaxPower"), config.otg.max_power)
+    _write(join(profile_path, "MaxPower"), 800)
     if config.otg.remote_wakeup:
         # XXX: Should we use MaxPower=100 with Remote Wakeup?
         _write(join(profile_path, "bmAttributes"), "0xA0")
@@ -271,6 +379,10 @@ def _cmd_start(config: Section) -> None:  # pylint: disable=too-many-statements,
             for count in range(cod.drives.count):
                 logger.info("===== MSD Extra: %d =====", count + 1)
                 gc.add_msd(cod.drives.start, "root", **cod.drives.default._unpack())
+
+    # if config.kvmd.uvc.type == "otg":
+    logger.info("===== UVC Camera =====")
+    gc.add_uvc(cod.uvc.start)
 
     logger.info("===== Preparing complete =====")
 
@@ -328,6 +440,7 @@ def main(argv: (list[str] | None)=None) -> None:
         load_hid=True,
         load_atx=True,
         load_msd=True,
+        load_uvc=True,
     )
     parser = argparse.ArgumentParser(
         prog="kvmd-otg",
