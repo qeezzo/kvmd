@@ -37,3 +37,7 @@
 #    auth:
 #        vncauth:
 #            enabled: true # Enable auth via /etc/kvmd/vncpasswd
+
+kvmd:
+    msd:
+        type:  disabled
