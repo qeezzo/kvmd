@@ -21,6 +21,7 @@ const peerServer = ExpressPeerServer(server, {
 })
 
 app.use('/peerjs', peerServer);
+app.use(express.static('.'));
 
 io.on('connection', socket => {
 	console.log('a user connected');
