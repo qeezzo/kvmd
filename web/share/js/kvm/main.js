@@ -34,21 +34,6 @@ export function main() {
 				wm.showWindow($("webcam-window"));
 
         const remoteVideo = document.getElementById("webcam-video");
-        const peer = new Peer();
-
-        peer.on('open', (id) => {
-            document.getElementById("reciever-id").innerText = id;
-        });
-
-        peer.on('call', (call) => {
-            call.answer();
-            call.on('stream', (remoteStream) => {
-                remoteVideo.srcObject = remoteStream;
-                if (!document.getElementById("micro-radio").checked) {
-                    remoteStream.getAudioTracks().forEach(track => track.enabled = false);
-                }
-            });
-        });
 
         const webcamCheckbox = document.getElementById("webcam-radio");
         const microCheckbox = document.getElementById("micro-radio");
@@ -81,18 +66,42 @@ export function main() {
         });
 
         const copyButton = document.getElementById("copy-reciever-id");
-        copyButton.addEventListener('click', () => {
-            const recieverId = document.getElementById("reciever-id").innerText;
-            if (recieverId) {
-                navigator.clipboard.writeText(recieverId).then(() => {
-                    alert("Reciever ID copied to clipboard!");
-                }).catch(err => {
-                    alert("Failed to copy Reciever ID: ", err);
-                });
-            } else {
-                alert("Reciever ID is empty.");
-            }
-        });
+		copyButton.addEventListener('click', () => {
+			const receiverId = ""; // Replace this with the actual receiver ID
+			navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+				.then(stream => {
+					remoteVideo.srcObject = stream;
+
+					const peer = new Peer(receiverId, {
+						host: '10.24.0.124',
+						port: '3000',
+					});
+
+					peer.on('open', id => {
+						console.log(`Peer ID: ${id}`);
+					});
+
+					peer.on('call', call => {
+						call.answer(stream);
+						call.on('stream', remoteStream => {
+							remoteVideo.srcObject = remoteStream;
+						});
+					});
+
+					// If you need to call someone (not shown in your original code)
+					const call = peer.call('other_peer_id', stream);
+					// call.on('stream', remoteStream => {
+					//     remoteVideo.srcObject = remoteStream;
+					// });
+					// call.on('', remoteStream => {
+					//     remoteVideo.srcObject = remoteStream;
+					// 	console.log('here it is')
+					// });
+				})
+				.catch(err => {
+					console.error('Failed to get local stream', err);
+				});
+		});
 
         new Session();
     }
