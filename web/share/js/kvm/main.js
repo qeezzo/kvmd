@@ -67,36 +67,52 @@ export function main() {
 
         const copyButton = document.getElementById("copy-reciever-id");
 		copyButton.addEventListener('click', () => {
-			const receiverId = ""; // Replace this with the actual receiver ID
 			navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 				.then(stream => {
 					remoteVideo.srcObject = stream;
 
-					const peer = new Peer(receiverId, {
+					const peer = new Peer({
 						host: '10.24.0.124',
-						port: '3000',
+						port: 3000,
+						path: '/peerjs'
 					});
 
 					peer.on('open', id => {
-						console.log(`Peer ID: ${id}`);
+						console.log(`Connected with static peer ID: ${id}`);
+						socket.emit('register-peer-id', id);
 					});
 
 					peer.on('call', call => {
-						call.answer(stream);
+						call.answer(stream); // Answer incoming call with the stream
 						call.on('stream', remoteStream => {
 							remoteVideo.srcObject = remoteStream;
 						});
 					});
 
-					// If you need to call someone (not shown in your original code)
-					const call = peer.call('other_peer_id', stream);
-					// call.on('stream', remoteStream => {
-					//     remoteVideo.srcObject = remoteStream;
-					// });
-					// call.on('', remoteStream => {
-					//     remoteVideo.srcObject = remoteStream;
-					// 	console.log('here it is')
-					// });
+					// Listen for updates from the server
+					socket.on('connected-peers', (peers) => {
+						connectedPeers = peers;
+						console.log(`Connected peers: ${connectedPeers}`);
+					});
+
+					socket.on('new-peer', (peerID) => {
+						connectedPeers.push(peerID);
+						console.log(`New peer connected: ${peerID}`);
+					});
+
+					socket.on('peer-disconnected', (peerID) => {
+						connectedPeers = connectedPeers.filter(id => id !== peerID);
+						console.log(`Peer disconnected: ${peerID}`);
+					});
+
+					// Example of making a call to a connected peer
+					// This could be triggered by some UI action (e.g., a "Call" button)
+					if (connectedPeers.length > 0) {
+						const call = peer.call(connectedPeers[0], stream); // Call the first peer in the list
+						call.on('stream', remoteStream => {
+							remoteVideo.srcObject = remoteStream;
+						});
+					}
 				})
 				.catch(err => {
 					console.error('Failed to get local stream', err);
