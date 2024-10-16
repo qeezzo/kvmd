@@ -71,6 +71,8 @@ export function main() {
 				.then(stream => {
 					remoteVideo.srcObject = stream;
 
+					const socket = io('http://10.42.0.124:3000')
+
 					const peer = new Peer({
 						host: '10.24.0.124',
 						port: 3000,
