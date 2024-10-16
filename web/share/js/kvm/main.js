@@ -71,6 +71,13 @@ export function main() {
 				.then(stream => {
 					remoteVideo.srcObject = stream;
 
+					const io = require('socket.io')(server, {
+						cors: {
+							origin: '*'
+						},
+						perMessageDeflate: false,
+					});
+
 					const socket = io('http://10.42.0.124:3000')
 
 					const peer = new Peer({
