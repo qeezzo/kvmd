@@ -31,103 +31,177 @@ export function main() {
             wm.toggleFullTabWindow($("stream-window"), true);
         }
         wm.showWindow($("stream-window"));
-				wm.showWindow($("webcam-window"));
 
-        const remoteVideo = document.getElementById("webcam-video");
+	
 
-        const webcamCheckbox = document.getElementById("webcam-radio");
-        const microCheckbox = document.getElementById("micro-radio");
-        const webcamWindow = document.getElementById("webcam-window");
-				webcamWindow.style.display = 'none';
 
-        webcamCheckbox.addEventListener('change', () => {
-            if (webcamCheckbox.checked) {
-                if (confirm("Are you sure you want to enable webcamera?\nEnsure you gave Receiver ID to the Sender")) {
-                    webcamWindow.style.display = 'block';
-                } else {
-                    webcamCheckbox.checked = false;
-                }
-            } else {
-                webcamWindow.style.display = 'none';
-            }
-        });
 
-        microCheckbox.addEventListener('change', () => {
-            if (microCheckbox.checked) {
-                alert("Are you sure you want to enable micro?");
-								if (remoteVideo.srcObject) {
-									remoteVideo.srcObject.getAudioTracks().forEach(track => track.enabled = true);
-							}
-            } else {
-                if (remoteVideo.srcObject) {
-                    remoteVideo.srcObject.getAudioTracks().forEach(track => track.enabled = false);
-                }
-            }
-        });
 
-        const copyButton = document.getElementById("copy-reciever-id");
-		copyButton.addEventListener('click', () => {
-			navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-				.then(stream => {
-					remoteVideo.srcObject = stream;
 
-					const io = require('socket.io')(server, {
-						cors: {
-							origin: '*'
-						},
-						perMessageDeflate: false,
-					});
 
-					const socket = io('http://10.42.0.124:3000')
+	const ws_host = window.location.hostname;
+	const ws_port = 3000;
+	const ws = new WebSocket(`wss://${ws_host}:${ws_port}`);
 
-					const peer = new Peer({
-						host: '10.24.0.124',
-						port: 3000,
-						path: '/peerjs'
-					});
+	const pc = new RTCPeerConnection({
+	    // iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+	});
 
-					peer.on('open', id => {
-						console.log(`Connected with static peer ID: ${id}`);
-						socket.emit('register-peer-id', id);
-					});
+	let dataChannel;
+	let videoStream;
+	let sendFrameStopEvent = true;
+	const videoElement = document.getElementById("localVideo");
+	const canvas = document.getElementById("canvas");
+	const ctx = canvas.getContext("2d");
+	const startButton = document.getElementById("startButton");
+	const resolutionSelect = document.getElementById("resolution");
 
-					peer.on('call', call => {
-						call.answer(stream); // Answer incoming call with the stream
-						call.on('stream', remoteStream => {
-							remoteVideo.srcObject = remoteStream;
-						});
-					});
+	// WebSocket Connection
+	ws.onopen = () => console.log("WebSocket connected to signaling server");
+	ws.onmessage = async (message) => {
+	    const msg = JSON.parse(message.data);
+	    if (msg.sdp) {
+		console.log("Received SDP answer");
+		await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+	    } else if (msg.ice) {
+		console.log("Received ICE candidate");
+		await pc.addIceCandidate(new RTCIceCandidate(msg.ice));
+	    }
+	};
 
-					// Listen for updates from the server
-					socket.on('connected-peers', (peers) => {
-						connectedPeers = peers;
-						console.log(`Connected peers: ${connectedPeers}`);
-					});
+	// Handle ICE candidates
+	pc.onicecandidate = (event) => {
+	    if (event.candidate) {
+		console.log("Sending ICE candidate");
+		ws.send(JSON.stringify({ ice: event.candidate }));
+	    }
+	};
 
-					socket.on('new-peer', (peerID) => {
-						connectedPeers.push(peerID);
-						console.log(`New peer connected: ${peerID}`);
-					});
+	// WebRTC connection state changes
+	pc.onconnectionstatechange = () => console.log("Connection state:", pc.connectionState);
 
-					socket.on('peer-disconnected', (peerID) => {
-						connectedPeers = connectedPeers.filter(id => id !== peerID);
-						console.log(`Peer disconnected: ${peerID}`);
-					});
+	// Open DataChannel for MJPEG images
+	dataChannel = pc.createDataChannel("mjpegStream");
+	dataChannel.onopen = () => console.log("DataChannel opened");
+	dataChannel.onerror = (err) => console.error("DataChannel error:", err);
+	dataChannel.onclose = () => console.log("DataChannel closed");
 
-					// Example of making a call to a connected peer
-					// This could be triggered by some UI action (e.g., a "Call" button)
-					if (connectedPeers.length > 0) {
-						const call = peer.call(connectedPeers[0], stream); // Call the first peer in the list
-						call.on('stream', remoteStream => {
-							remoteVideo.srcObject = remoteStream;
-						});
-					}
-				})
-				.catch(err => {
-					console.error('Failed to get local stream', err);
-				});
+	// Capture Video Stream
+	async function startCapture() {
+	    const [width, height] = resolutionSelect.value.split("x").map(Number);
+	    try {
+		videoStream = await navigator.mediaDevices.getUserMedia({
+		    video: {
+			mimeType: "image/jpeg",
+			width,
+			height
+		    },
+		    audio: {
+			codec: "opus",
+		    }
 		});
+		videoElement.srcObject = videoStream;
+		console.log(`Camera access granted at ${width}x${height}`);
+
+		const track = videoStream.getVideoTracks()[0];
+		const capabilities = track.getCapabilities();
+		console.log("Camera Capabilities:", capabilities);
+
+
+		// Audio track
+		const audioTrack = videoStream.getAudioTracks()[0];
+		if (audioTrack) {
+		    pc.addTrack(audioTrack, videoStream);
+		    console.log("Audio track added to WebRTC connection.");
+		} else {
+		    console.warn("No audio track found.");
+		}
+
+		// Create WebRTC Offer
+		const offer = await pc.createOffer();
+		await pc.setLocalDescription(offer);
+		ws.send(JSON.stringify({ sdp: offer }));
+
+	    } catch (error) {
+		console.error("Error accessing camera/audio:", error);
+	    }
+	}
+
+	let frameIntervalId;  // Store the interval reference to clear it later
+	let frameInterval = 1000 / 30; // Frame interval for 30 FPS
+	let lastFrameTime = 0;  // Last time a frame was sent (in ms)
+	let frameCount = 0;     // Counter for frames sent in the current second
+
+	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
+	function startSendingFrames() {
+	    frameIntervalId = setInterval(() => {
+		if (sendFrameStopEvent)
+		    return;
+
+		if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+
+		// Set canvas size
+		canvas.width = videoElement.videoWidth;
+		canvas.height = videoElement.videoHeight;
+
+		// Draw the current frame onto the canvas
+		ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+		// Send as MJPEG (if available)
+		canvas.toBlob((blob) => {
+		    if (dataChannel.readyState !== "open")
+			return;
+
+		    // console.log(blob.size)
+		    dataChannel.send(blob);
+
+		    // Calculate FPS
+		    let now = performance.now(); // Get current time in milliseconds
+		    frameCount++;
+
+		    // If more than 1 second has passed, log FPS
+		    if (now - lastFrameTime >= 1000) {
+			let actualFPS = frameCount;
+			console.log(`Actual FPS: ${actualFPS}`);
+			lastFrameTime = now; // Update last frame time
+			frameCount = 0;      // Reset frame count for the next second
+		    }
+		}, "image/jpeg", 0.4);
+
+	    }, frameInterval);  // Send a frame every "frameInterval" milliseconds (e.g., 33ms for 30 FPS)
+	}
+
+	// Stop sending frames
+	function stopSendingFrames() {
+	    clearInterval(frameIntervalId);
+	}
+
+	// Start streaming when button is clicked
+	startButton.addEventListener("click", () => {
+	    sendFrameStopEvent = !sendFrameStopEvent;
+	    startButton.textContent = sendFrameStopEvent ? "Start Streaming" : "Stop Streaming";
+	    if (!sendFrameStopEvent) {
+		startSendingFrames();  // Begin sending frames when streaming starts
+	    } else {
+		stopSendingFrames();   // Stop sending frames when streaming stops
+	    }
+	});
+
+	// Trigger a capture with the selected resolution when it changes
+	resolutionSelect.addEventListener("change", () => {
+	    startCapture();
+	})
+
+	startCapture();
+
+
+
+
+
+
 
         new Session();
     }
 }
+
+
