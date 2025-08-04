@@ -135,6 +135,7 @@ class _GadgetConfig:
         self.__hid_instance = 0
         self.__msd_instance = 0
         self.__uvc_instance = 0
+        self.__uac2_instance = 0
         _mkdir(meta_path)
 
     def add_serial(self, start: bool) -> None:
@@ -226,41 +227,26 @@ class _GadgetConfig:
         func_path = join(self.__gadget_path, "functions", func)
 
         _mkdir(func_path)
-        _create_frame(func_path, 256,  144,  "uncompressed", "u")
-        _create_frame(func_path, 320,  180,  "uncompressed", "u")
-        _create_frame(func_path, 426,  240,  "uncompressed", "u")
-        _create_frame(func_path, 640,  360,  "uncompressed", "u")
-        _create_frame(func_path, 640,  480,  "uncompressed", "u")
-        _create_frame(func_path, 800,  600,  "uncompressed", "u")
-        _create_frame(func_path, 1024, 768,  "uncompressed", "u")
-        _create_frame(func_path, 1280, 720,  "uncompressed", "u")
-        _create_frame(func_path, 1280, 960,  "uncompressed", "u")
-        _create_frame(func_path, 1440, 1080, "uncompressed", "u")
-        _create_frame(func_path, 1536, 864,  "uncompressed", "u")
-        _create_frame(func_path, 1600, 900,  "uncompressed", "u")
-        _create_frame(func_path, 1600, 1200, "uncompressed", "u")
-        _create_frame(func_path, 1920, 1080, "uncompressed", "u")
-
-        _create_frame(func_path, 256,  144,  "mjpeg", "m")
-        _create_frame(func_path, 320,  180,  "mjpeg", "m")
-        _create_frame(func_path, 426,  240,  "mjpeg", "m")
-        _create_frame(func_path, 640,  360,  "mjpeg", "m")
+        # _create_frame(func_path, 256,  144,  "mjpeg", "m")
+        # _create_frame(func_path, 320,  180,  "mjpeg", "m")
+        # _create_frame(func_path, 426,  240,  "mjpeg", "m")
+        # _create_frame(func_path, 640,  360,  "mjpeg", "m")
         _create_frame(func_path, 640,  480,  "mjpeg", "m")
-        _create_frame(func_path, 800,  600,  "mjpeg", "m")
-        _create_frame(func_path, 1024, 768,  "mjpeg", "m")
-        _create_frame(func_path, 1280, 720,  "mjpeg", "m")
-        _create_frame(func_path, 1280, 960,  "mjpeg", "m")
-        _create_frame(func_path, 1440, 1080, "mjpeg", "m")
-        _create_frame(func_path, 1536, 864,  "mjpeg", "m")
-        _create_frame(func_path, 1600, 900,  "mjpeg", "m")
-        _create_frame(func_path, 1600, 1200, "mjpeg", "m")
-        _create_frame(func_path, 1920, 1080, "mjpeg", "m")
-        _create_frame(func_path, 1920, 1080, "mjpeg", "m")
+        # _create_frame(func_path, 800,  600,  "mjpeg", "m")
+        # _create_frame(func_path, 1024, 768,  "mjpeg", "m")
+        # _create_frame(func_path, 1280, 720,  "mjpeg", "m")
+        # _create_frame(func_path, 1280, 960,  "mjpeg", "m")
+        # _create_frame(func_path, 1440, 1080, "mjpeg", "m")
+        # _create_frame(func_path, 1536, 864,  "mjpeg", "m")
+        # _create_frame(func_path, 1600, 900,  "mjpeg", "m")
+        # _create_frame(func_path, 1600, 1200, "mjpeg", "m")
+        # _create_frame(func_path, 1920, 1080, "mjpeg", "m")
+        # _create_frame(func_path, 1920, 1080, "mjpeg", "m")
 
         # Create symbolic links
         _mkdir(f"{func_path}/streaming/header/h")
 
-        _symlink(f"{func_path}/streaming/uncompressed/u",   f"{func_path}/streaming/header/h/u")
+        # _symlink(f"{func_path}/streaming/uncompressed/u",   f"{func_path}/streaming/header/h/u")
         _symlink(f"{func_path}/streaming/mjpeg/m",          f"{func_path}/streaming/header/h/m")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/fs/h")
         _symlink(f"{func_path}/streaming/header/h",         f"{func_path}/streaming/class/hs/h")
@@ -300,6 +286,21 @@ class _GadgetConfig:
         self.__create_meta(func, name)
 
         self.__uvc_instance += 1
+
+    def add_uac2(self, start: bool) -> None:
+        func = f"uac2.usb{self.__uac2_instance}"
+        func_path = join(self.__gadget_path, "functions", func)
+
+        # Create symbolic links
+        _mkdir(f"{func_path}/streaming/header/h")
+
+        logger = get_logger()
+        logger.info("---- uac2 ----")
+        if start:
+            logger.info("---- uac2 link ----")
+            _symlink(func_path, join(self.__profile_path, func))
+
+        self.__uac2_instance += 1
 
     def __create_meta(self, func: str, name: str) -> None:
         _write(join(self.__meta_path, f"{func}@meta.json"), json.dumps({"func": func, "name": name}))
@@ -385,6 +386,8 @@ def _cmd_start(config: Section) -> None:  # pylint: disable=too-many-statements,
     # if config.kvmd.uvc.type == "otg":
     logger.info("===== UVC Camera =====")
     gc.add_uvc(cod.uvc.start)
+    logger.info("===== UAC2 =====")
+    gc.add_uac2(cod.uac2.start)
 
     logger.info("===== Preparing complete =====")
 
@@ -443,6 +446,7 @@ def main(argv: (list[str] | None)=None) -> None:
         load_atx=True,
         load_msd=True,
         load_uvc=True,
+        load_uac2=True,
     )
     parser = argparse.ArgumentParser(
         prog="kvmd-otg",
