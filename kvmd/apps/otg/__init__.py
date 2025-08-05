@@ -292,12 +292,9 @@ class _GadgetConfig:
         func_path = join(self.__gadget_path, "functions", func)
 
         # Create symbolic links
-        _mkdir(f"{func_path}/streaming/header/h")
+        _mkdir(func_path)
 
-        logger = get_logger()
-        logger.info("---- uac2 ----")
         if start:
-            logger.info("---- uac2 link ----")
             _symlink(func_path, join(self.__profile_path, func))
 
         self.__uac2_instance += 1

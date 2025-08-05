@@ -145,6 +145,7 @@ def init(
             load_msd=True,
             load_gpio=True,
             load_uvc=True,
+            load_uac2=True,
         ))
         raise SystemExit()
     config = _init_config(options.config, options.set_options, **load)
@@ -257,6 +258,7 @@ def _patch_dynamic(  # pylint: disable=too-many-locals
     load_msd: bool=False,
     load_gpio: bool=False,
     load_uvc: bool=False,
+    load_uac2: bool=False,
 ) -> bool:
 
     rebuild = False
@@ -583,6 +585,10 @@ def _get_config_scheme() -> dict:
                 },
 
                 "uvc": {
+                    "start":    Option(True, type=valid_bool),
+                },
+
+                "uac2": {
                     "start":    Option(True, type=valid_bool),
                 },
 
