@@ -79,6 +79,18 @@ div#stream-webcam-selection {
 	box-shadow: inset 0 0 0px 1px #e8e8e8cd;
 }
 
+#webcam-menu.connecting > .text b::after {
+	content: " (connecting...)";
+}
+#webcam-menu.failed > .text b::after {
+	content: " (failed; reconnecting...)";
+	color: #ad2e2e;
+}
+#webcam-menu.connected > .text b::after {
+	content: " (connected)";
+	color: #2ead54;
+}
+
 #webcam-dropdown.streaming a span {
     color: white;
 }

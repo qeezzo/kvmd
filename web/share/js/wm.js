@@ -338,12 +338,20 @@ function __WindowManager() {
 				}
 
 				el_button.classList.add("menu-button-pressed");
+
+				const event = new CustomEvent('openChanged', { detail: { open: true } });
+    			el_menu.dispatchEvent(event);
+
 				el_menu.style.visibility = "visible";
 				let el_focus = el_menu.querySelector("[data-focus]");
 				(el_focus !== null ? el_focus : el_menu).focus();
 				all_hidden &= false;
 			} else {
 				el_button.classList.remove("menu-button-pressed");
+
+				const event = new CustomEvent('openChanged', { detail: { open: false } });
+    			el_menu.dispatchEvent(event);
+
 				el_menu.style.visibility = "hidden";
 				el_menu.style.removeProperty("right");
 			}
