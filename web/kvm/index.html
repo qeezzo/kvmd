@@ -816,28 +816,30 @@
         </div>
       </li>
 
-    <li class="right" id="webcam-dropdown"><a class="menu-button" href="#"><img class="feature-disabled" id="stream-webcam-led" src="/share/svg/led-camera.svg"><span>Webcam</span></a>
+      <li class="right" id="webcam-dropdown"><a class="menu-button" href="#"><img class="feature-disabled" id="stream-webcam-led" src="/share/svg/led-camera.svg"><span>Webcam</span></a>
         <div class="menu" id="webcam-menu">
           <div class="text"><b>Webcam Streaming<br></div>
           <hr>
           <div class="text" style="margin-right: 20px">
-		<label for="resolution">Select Resolution:</label>
-		<select id="resolution">
-		    <option value="640x480">640x480</option>
-		    <option value="800x600">800x600</option>
-		    <option value="1280x720" selected>1280x720</option>
-		    <option value="1920x1080">1920x1080</option>
-		</select>
+        <label for="resolution">Select Resolution:</label>
+        <select id="resolution">
+           <option value="640x480" selected>640x480</option>
+           <!-- <option value="800x600">800x600</option>
+           <option value="1280x720">1280x720</option>
+           <option value="1920x1080">1920x1080</option> -->
+        </select>
           </div>
           <hr>
-	        <button id="startButton">Start Streaming</button>
+           <button id="connectButton">Connect</button>
+           <button id="reconnectButton">Reconnect</button>
+           <button id="disconnectButton">Disconnect</button>
           <hr>
-	        <video id="localVideo" autoplay playsinline></video>
-		<canvas id="canvas" style="display: none"></canvas>
+           <button id="startButton">Start Streaming</button>
+          <hr>
+           <video id="localVideo" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none"></canvas>
         </div>
     </li>
-
-
  
     </ul>
     <div class="window" id="stream-webcam-window">
