@@ -5,7 +5,6 @@ import {checkBrowser} from "../bb.js";
 import {wm, initWindowManager} from "../wm.js";
 
 import {Session} from "./session.js";
-import {Peer} from "https://esm.sh/peerjs@1.5.4?bundle-deps";
 
 export function main() {
     if (!checkBrowser(null, "/share/css/kvm/x-mobile.css")) return;
@@ -42,12 +41,22 @@ export function main() {
 	const videoElement = document.getElementById("localVideo");
 	const canvas = document.getElementById("canvas");
 	const ctx = canvas.getContext("2d");
-	const startButton = document.getElementById("startButton");
 	const resolutionSelect = document.getElementById("resolution");
 	const connectButton = document.getElementById("connectButton");
-	const reconnectButton = document.getElementById("reconnectButton");
-	const disconnectButton = document.getElementById("disconnectButton");
+	const startButton = document.getElementById("startButton");
+	const webcamDropdown = document.getElementById("webcam-dropdown")
 	
+	function toggleUi(connected) {
+		if (connected) {
+			connectButton.textContent = "Disconnect";
+			startButton.style = "display: block";
+		} else {
+			webcamDropdown.classList.remove('connected');
+			connectButton.textContent = "Connect";
+			startButton.style = "display: none";
+		}
+	}
+	toggleUi(false);
 
 	function setupPeerConnection() {
 		pc = new RTCPeerConnection();
@@ -73,19 +82,22 @@ export function main() {
 		ws = new WebSocket(`wss://${ws_host}:${ws_port}`);
 		ws.onopen = () => {
 			console.log("WebSocket connected");
+			toggleUi(true)
+
 			setupPeerConnection();
 			startCapture();
 		};
 		ws.onmessage = async (message) => {
 			const msg = JSON.parse(message.data);
 			if (msg.sdp) {
-			await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+				await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
 			} else if (msg.ice) {
-			await pc.addIceCandidate(new RTCIceCandidate(msg.ice));
+				await pc.addIceCandidate(new RTCIceCandidate(msg.ice));
 			}
 		};
 		ws.onclose = () => {
 			console.log("WebSocket closed");
+			toggleUi(false);
 		};
 		ws.onerror = (err) => {
 			console.error("WebSocket error", err);
@@ -103,11 +115,28 @@ export function main() {
 		}
 	}
 
-	connectButton.addEventListener("click", connect);
-	disconnectButton.addEventListener("click", disconnect);
-	reconnectButton.addEventListener("click", () => {
-		disconnect();
-		setTimeout(connect, 500);
+	connectButton.addEventListener("click", () => {
+		connectButton.disabled = true;
+
+		if (ws) {
+			try {
+				disconnect();
+			} catch(err) {
+				console.log(`ERROR while disconnecting ${err}`);
+			}
+		} else {
+			connectButton.classList.remove("failed");
+
+			try {
+				connect();
+			} catch(err) {
+				console.log(`ERROR while connecting ${err}`);
+				connectButton.classList.add("failed");
+			}
+		}
+		setTimeout(() => {
+			connectButton.disabled = false;
+		}, 250);
 	});
 
 	// Capture Video Stream
@@ -115,14 +144,14 @@ export function main() {
 		const [width, height] = resolutionSelect.value.split("x").map(Number);
 		try {
 			videoStream = await navigator.mediaDevices.getUserMedia({
-			video: {
-				mimeType: "image/jpeg",
-				width,
-				height
-			},
-			audio: {
-				codec: "opus",
-			}
+				video: {
+					mimeType: "image/jpeg",
+					width,
+					height
+				},
+				audio: {
+					codec: "opus",
+				}
 			});
 			videoElement.srcObject = videoStream;
 			console.log(`Camera access granted at ${width}x${height}`);
@@ -131,21 +160,19 @@ export function main() {
 			const capabilities = track.getCapabilities();
 			console.log("Camera Capabilities:", capabilities);
 
-
 			// Audio track
 			const audioTrack = videoStream.getAudioTracks()[0];
 			if (audioTrack) {
-			pc.addTrack(audioTrack, videoStream);
-			console.log("Audio track added to WebRTC connection.");
+				pc.addTrack(audioTrack, videoStream);
+				console.log("Audio track added to WebRTC connection.");
 			} else {
-			console.warn("No audio track found.");
+				console.warn("No audio track found.");
 			}
 
 			// Create WebRTC Offer
 			const offer = await pc.createOffer();
 			await pc.setLocalDescription(offer);
 			ws.send(JSON.stringify({ sdp: offer }));
-
 		} catch (error) {
 			console.error("Error accessing camera/audio:", error);
 		}
@@ -158,6 +185,8 @@ export function main() {
 
 	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
 	function startSendingFrames() {
+		webcamDropdown.classList.add('streaming');
+
 		frameIntervalId = setInterval(() => {
 			if (sendFrameStopEvent) return;
 
@@ -196,6 +225,7 @@ export function main() {
 
 	// Stop sending frames
 	function stopSendingFrames() {
+		webcamDropdown.classList.remove('streaming');
 		clearInterval(frameIntervalId);
 	}
 
@@ -203,6 +233,7 @@ export function main() {
 	startButton.addEventListener("click", () => {
 		sendFrameStopEvent = !sendFrameStopEvent;
 		startButton.textContent = sendFrameStopEvent ? "Start Streaming" : "Stop Streaming";
+
 		if (!sendFrameStopEvent) {
 			startSendingFrames();  // Begin sending frames when streaming starts
 		} else {
@@ -215,6 +246,5 @@ export function main() {
 		startCapture();
 	})
 
-	// startCapture();
 	new Session();
 }

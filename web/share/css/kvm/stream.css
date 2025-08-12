@@ -23,10 +23,6 @@
 div#stream-window {
 	width: 100%;
 	height: 100%;
-	/*padding-top: 23px;
-	padding-bottom: 2px;
-	padding-left: 2px;
-	padding-right: 2px;*/
 }
 
 #webcam-video {
@@ -37,10 +33,6 @@ div#stream-window {
 div#webcam-window {
 	min-width: 400px;
 	min-height: 200px;
-	/*padding-top: 23px;
-	padding-bottom: 2px;
-	padding-left: 2px;
-	padding-right: 2px;*/
 }
 
 div#stream-info {
@@ -85,6 +77,31 @@ div#stream-webcam-selection {
 	position: relative;
 	background-color: #5b90bb50;
 	box-shadow: inset 0 0 0px 1px #e8e8e8cd;
+}
+
+#webcam-dropdown.streaming a span {
+    color: white;
+}
+#webcam-dropdown.streaming a span::before {
+    content: "";
+    background-color: white;
+    display: block;
+    width: .4em;
+    left: 9%;
+    position: absolute;
+    z-index: 10;
+    height: .4em;
+    border-radius: 100%;
+    text-align: center;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+#webcam-dropdown #connectButton:disabled {
+	background-color: #00000050;
+}
+#connectButton.failed::after {
+	content: " (failed)";
+	color: #bf2d2d;
 }
 
 div#stream-box {
