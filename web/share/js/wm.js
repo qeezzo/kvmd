@@ -339,8 +339,7 @@ function __WindowManager() {
 
 				el_button.classList.add("menu-button-pressed");
 
-				const event = new CustomEvent('openChanged', { detail: { open: true } });
-    			el_menu.dispatchEvent(event);
+    			el_menu.dispatchEvent(new CustomEvent('openChanged', { detail: { open: true } }));
 
 				el_menu.style.visibility = "visible";
 				let el_focus = el_menu.querySelector("[data-focus]");
@@ -349,8 +348,7 @@ function __WindowManager() {
 			} else {
 				el_button.classList.remove("menu-button-pressed");
 
-				const event = new CustomEvent('openChanged', { detail: { open: false } });
-    			el_menu.dispatchEvent(event);
+				el_menu.dispatchEvent(new CustomEvent('openChanged', { detail: { open: false } }));
 
 				el_menu.style.visibility = "hidden";
 				el_menu.style.removeProperty("right");
@@ -376,6 +374,9 @@ function __WindowManager() {
 		for (let el_button of __menu_buttons) {
 			let el_menu = el_button.parentElement.querySelector(".menu");
 			el_button.classList.remove("menu-button-pressed");
+
+    		el_menu.dispatchEvent(new CustomEvent('openChanged', { detail: { open: false } }));
+
 			el_menu.style.visibility = "hidden";
 			el_menu.style.removeProperty("right");
 		}

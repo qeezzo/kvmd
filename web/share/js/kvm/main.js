@@ -36,7 +36,7 @@ export function main() {
 	let pc;
 	let dataChannel;
 	let videoStream;
-	let sendFrameStopEvent = true;
+	let sendingFrames = false;
 
 	const videoElement = document.getElementById("localVideo");
 	const canvas = document.getElementById("canvas");
@@ -46,16 +46,14 @@ export function main() {
 	const webcamDropdown = document.getElementById("webcam-dropdown")
 	const webcamMenu = document.getElementById("webcam-menu")
 	
-	function connected_updateUi(connected) {
+	function updateUi_isConnected(connected) {
 		if (connected) {
 			webcamMenu.classList.add("connected");
 		} else {
 			webcamMenu.classList.remove("connected");
 		}
 	}
-	connected_updateUi(false);
-
-	function streaming_updateUi(streaming) {
+	function updateUi_isStreaming(streaming) {
 		if (streaming) {
 			webcamDropdown.classList.add('streaming');
 		} else {
@@ -74,11 +72,13 @@ export function main() {
 		pc.onconnectionstatechange = () => console.log("Connection state:", pc.connectionState);
 		dataChannel = pc.createDataChannel("mjpegStream");
 		dataChannel.onopen = () => {
-			streaming_updateUi(true);
+			if (sendingFrames) {
+				updateUi_isStreaming(true);
+			}
 			console.log("DataChannel opened");
 		}
 		dataChannel.onclose = () => {
-			streaming_updateUi(false);
+			updateUi_isStreaming(false);
 			console.log("DataChannel closed");
 		}
 	}
@@ -86,7 +86,13 @@ export function main() {
 	function tryReconnect() {
 		webcamMenu.classList.remove("connecting", "connected");
 		webcamMenu.classList.add("failed");
-		setTimeout(connect, 500);
+		setTimeout(() => {
+			webcamMenu.classList.remove("failed");
+
+			if (videoStream) {
+				connect();
+			};
+		}, 1000);
 	}
 
 	function connect() {
@@ -105,10 +111,10 @@ export function main() {
 			ws = new WebSocket(`wss://${ws_host}:${ws_port}`);
 			ws.onopen = () => {
 				console.log("WebSocket connected");
-				connected_updateUi(true)
+				updateUi_isConnected(true)
 
 				setupPeerConnection();
-				startCapture();
+				restartCapture();
 			};
 			ws.onmessage = async (message) => {
 				const msg = JSON.parse(message.data);
@@ -120,7 +126,7 @@ export function main() {
 			};
 			ws.onclose = () => {
 				console.log("WebSocket closed");
-				connected_updateUi(false);
+				updateUi_isConnected(false);
 				tryReconnect();
 			};
 			ws.onerror = (err) => {
@@ -140,13 +146,20 @@ export function main() {
 		if (pc) {
 			pc.close();
 			pc = null;
+			if (dataChannel) {
+				dataChannel.close();
+				dataChannel = null;
+			}
 		}
+		stopSendingFrames();
 	}
 
 	// Capture Video Stream
 	let debounce = false;
-	async function startCapture() {
+	async function restartCapture() {
 		if (debounce) return;
+		console.log("Restarting capture")
+
 		debounce = true;
 
 		const [width, height] = resolutionSelect.value.split("x").map(Number);
@@ -162,6 +175,8 @@ export function main() {
 				}
 			});
 			debounce = false;
+
+			if (!videoStream) return; // Was stopped
 
 			videoElement.srcObject = videoStream;
 			console.log(`Camera access granted at ${width}x${height}`);
@@ -188,15 +203,30 @@ export function main() {
 		}
 	}
 
+	function stopCapture() {
+		if (!videoStream) return;
+		console.log("Stopping capture")
+
+		videoElement.srcObject = null;
+
+		videoStream.getTracks().forEach((track) => {
+			track.stop();
+		});
+		videoStream = null;
+	}
+
 	// Custom event created in web/share/js/wm.js
 	webcamMenu.addEventListener("openChanged", (e) => {
 		if (e.detail.open) {
 			if (!videoStream) {
-				startCapture();
+				restartCapture();
 			}
 			if (!ws) {
 				connect();
 			}
+		} else if (!sendingFrames) {
+			disconnect();
+			stopCapture();
 		}
 	});
 
@@ -208,7 +238,7 @@ export function main() {
 	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
 	function startSendingFrames() {
 		frameIntervalId = setInterval(() => {
-			if (sendFrameStopEvent) return;
+			if (!sendingFrames) return;
 			if (!videoElement.videoWidth || !videoElement.videoHeight) return;
 
 			// Set canvas size
@@ -218,11 +248,14 @@ export function main() {
 			// Draw the current frame onto the canvas
 			ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
+			if (sendingFrames && dataChannel.readyState === "open") {
+				updateUi_isStreaming(true);
+			}
+
 			// Send as MJPEG (if available)
 			canvas.toBlob((blob) => {
 				if (dataChannel.readyState !== "open") return;
 
-				streaming_updateUi(true);
 				dataChannel.send(blob);
 
 				// Calculate FPS
@@ -242,16 +275,17 @@ export function main() {
 
 	// Stop sending frames
 	function stopSendingFrames() {
-		streaming_updateUi(false);
+		if (!frameIntervalId) return;
+		updateUi_isStreaming(false);
 		clearInterval(frameIntervalId);
 	}
 
 	// Start streaming when button is clicked
 	startButton.addEventListener("click", () => {
-		sendFrameStopEvent = !sendFrameStopEvent;
-		startButton.textContent = sendFrameStopEvent ? "Start Streaming" : "Stop Streaming";
+		sendingFrames = !sendingFrames;
+		startButton.textContent = sendingFrames ? "Stop Streaming" : "Start Streaming";
 
-		if (!sendFrameStopEvent) {
+		if (sendingFrames) {
 			startSendingFrames();  // Begin sending frames when streaming starts
 		} else {
 			stopSendingFrames();   // Stop sending frames when streaming stops
@@ -260,7 +294,7 @@ export function main() {
 
 	// Trigger a capture with the selected resolution when it changes
 	resolutionSelect.addEventListener("change", () => {
-		startCapture();
+		restartCapture();
 	})
 
 	new Session();
