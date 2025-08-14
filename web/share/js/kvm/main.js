@@ -36,7 +36,7 @@ export function main() {
 	let pc;
 	let dataChannel;
 	let videoStream;
-	let sendingFrames = false;
+	let sendingFramesBtnClicked = false;
 
 	const videoElement = document.getElementById("localVideo");
 	const canvas = document.getElementById("canvas");
@@ -69,17 +69,17 @@ export function main() {
 				ws.send(JSON.stringify({ ice: event.candidate }));
 			}
 		};
-		pc.onconnectionstatechange = () => console.log("Connection state:", pc.connectionState);
+		pc.onconnectionstatechange = () => console.log("Peer connection state:", pc.connectionState);
 		dataChannel = pc.createDataChannel("mjpegStream");
 		dataChannel.onopen = () => {
-			if (sendingFrames) {
+			if (sendingFramesBtnClicked) {
 				updateUi_isStreaming(true);
 			}
-			console.log("DataChannel opened");
+			console.log("Peer DataChannel opened");
 		}
 		dataChannel.onclose = () => {
 			updateUi_isStreaming(false);
-			console.log("DataChannel closed");
+			console.log("Peer DataChannel closed");
 		}
 	}
 
@@ -223,8 +223,11 @@ export function main() {
 			}
 			if (!ws) {
 				connect();
+				if (sendingFramesBtnClicked) {
+					startSendingFrames();
+				}
 			}
-		} else if (!sendingFrames) {
+		} else if (!sendingFramesBtnClicked) {
 			disconnect();
 			stopCapture();
 		}
@@ -237,8 +240,9 @@ export function main() {
 
 	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
 	function startSendingFrames() {
+		if (frameIntervalId) return;
 		frameIntervalId = setInterval(() => {
-			if (!sendingFrames) return;
+			if (!sendingFramesBtnClicked) return;
 			if (!videoElement.videoWidth || !videoElement.videoHeight) return;
 
 			// Set canvas size
@@ -248,7 +252,7 @@ export function main() {
 			// Draw the current frame onto the canvas
 			ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-			if (sendingFrames && dataChannel.readyState === "open") {
+			if (sendingFramesBtnClicked && dataChannel.readyState === "open") {
 				updateUi_isStreaming(true);
 			}
 
@@ -278,14 +282,15 @@ export function main() {
 		if (!frameIntervalId) return;
 		updateUi_isStreaming(false);
 		clearInterval(frameIntervalId);
+		frameIntervalId = null;
 	}
 
 	// Start streaming when button is clicked
 	startButton.addEventListener("click", () => {
-		sendingFrames = !sendingFrames;
-		startButton.textContent = sendingFrames ? "Stop Streaming" : "Start Streaming";
+		sendingFramesBtnClicked = !sendingFramesBtnClicked;
+		startButton.textContent = sendingFramesBtnClicked ? "Stop Streaming" : "Start Streaming";
 
-		if (sendingFrames) {
+		if (sendingFramesBtnClicked) {
 			startSendingFrames();  // Begin sending frames when streaming starts
 		} else {
 			stopSendingFrames();   // Stop sending frames when streaming stops
