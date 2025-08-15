@@ -290,6 +290,7 @@ export function Session() {
 					__ws.onmessage = __wsMessageHandler;
 					__ws.onerror = __wsErrorHandler;
 					__ws.onclose = __wsCloseHandler;
+					__webcam.init();
 				} else if (http.status === 401 || http.status === 403) {
 					window.onbeforeunload = () => null;
 					wm.error("Unexpected logout occured, please login again").then(function() {
@@ -405,6 +406,8 @@ export function Session() {
 		__msd.setState(null);
 		__streamer.setState(null);
 		__ws = null;
+
+		__webcam.cleanup();
 
 		setTimeout(function() {
 			$("link-led").className = "led-yellow";

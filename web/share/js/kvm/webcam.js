@@ -25,6 +25,7 @@ export function Webcam() {
 	var self = this;
 
 	const videoElement = document.getElementById("localVideo");
+	videoElement.muted = false; // Allow for preview sound
 	const canvas = document.getElementById("canvas");
 	const ctx = canvas.getContext("2d");
 	const resolutionSelect = document.getElementById("resolution");
@@ -47,25 +48,29 @@ export function Webcam() {
 		}
 	}
 
+	let isInit = false;
 	let ws;
 	let videoStream;
 	let streamingBtnClicked = false;
-	let offerCreated = false;
+	let isMenuOpen = false;
 
+	let pc;
 	let peerDataChannel;
 	let peerAudioTrack;
-	const pc = new RTCPeerConnection();
-	pc.onicecandidate = (event) => {
-		if (event.candidate) {
-			console.log("Sending ICE candidate");
-			ws.send(JSON.stringify({ ice: event.candidate }));
-		}
-	};
-	pc.onconnectionstatechange = () => console.log("Peer connection state:", pc.connectionState);
 
-	function setupPeerDataChannel() {
-		if (peerDataChannel) return;
-		console.log("Setting up Peer Data Channel...")
+	function setupPeerConnection() {
+		if (pc) return;
+		console.log("Setting up Peer connection...")
+
+		pc = new RTCPeerConnection();
+		pc.onicecandidate = (event) => {
+			if (event.candidate) {
+				console.log("Sending ICE candidate");
+				ws.send(JSON.stringify({ ice: event.candidate }));
+			}
+		};
+		pc.onconnectionstatechange = () => console.log("Peer connection state:", pc.connectionState);
+		
 		peerDataChannel = pc.createDataChannel("mjpegStream");
 		peerDataChannel.onopen = () => {
 			if (streamingBtnClicked) {
@@ -80,23 +85,36 @@ export function Webcam() {
 		}
 	}
 
-	function tryReconnect() {
-		webcamMenu.classList.remove("connecting", "connected");
-		webcamMenu.classList.add("failed");
-		setTimeout(() => {
+	let reconnectionId = null;
+	function tryReconnectWs() {
+		if (reconnectionId !== null || !shouldBeConnected()) return;
+
+		let reconnect = async () => {
+			webcamMenu.classList.remove("connecting", "connected");
+			webcamMenu.classList.add("failed");
+
+			if (!isInit) return; // if the whole page is suspended by kvmd's WebSocket, do nothing
 			webcamMenu.classList.remove("failed");
+			if (!shouldBeConnected()) {
+				cancelReconnection();
+				return;
+			}
 
 			if (videoStream) {
-				connect();
+				connectWs();
 			};
-		}, 1000);
-	}
-
-	function connect() {
-		if (ws && ws.readyState === WebSocket.OPEN) {
-			console.log("Already connected");
-			return;
 		}
+		reconnectionId = setInterval(reconnect, 1000);
+		reconnect();
+	}
+	function cancelReconnection() {
+		if (reconnectionId !== null) {
+			clearInterval(reconnectionId);
+			reconnectionId = null;
+		}
+	}
+	function connectWs() {
+		if (ws) return;
 
 		console.log("Connecting WebSocket...")
 
@@ -110,16 +128,13 @@ export function Webcam() {
 			ws = new WebSocket(`wss://${ws_host}:${ws_port}`);
 			ws.onopen = () => {
 				console.log("WebSocket connected");
-				updateUi_isConnected(true)
+				updateUi_isConnected(true);
 
-				setupPeerDataChannel();
-				if (!offerCreated) {
-					try {
-						createWebrtcOffer();
-					} catch(error) {
-						console.error("Offer creation failed", error);
-					}
-				}
+				// Restore everything if the streaming is enabled by user
+				if (streamingBtnClicked)
+					startStreaming();
+				setupPeerConnection();
+				tryAddAudioTrack();
 			};
 			ws.onmessage = async (message) => {
 				const msg = JSON.parse(message.data);
@@ -132,18 +147,23 @@ export function Webcam() {
 			ws.onclose = () => {
 				console.log("WebSocket closed");
 				updateUi_isConnected(false);
-				tryReconnect();
+
+				ws = null;
+				// when ws is disconnected, we assume the server shouldn't be interacted with anymore
+				disconnectAll();
+				tryReconnectWs();
 			};
 			ws.onerror = (err) => {
 				console.error("WebSocket error", err);
 			};
+
+			cancelReconnection();
 		} catch (error) {
 			console.log("WebSocket connect failed", error);
-			tryReconnect();
+			tryReconnectWs();
 		}
 	}
-	function disconnect() {
-		console.log("Disconnecting...")
+	function disconnectAll() {
 		if (ws) {
 			try {
 				ws.close();
@@ -151,6 +171,15 @@ export function Webcam() {
 				console.error("Error closing WebSocket:", error);
 			}
 			ws = null;
+		}
+		if (pc) {
+			peerAudioTrack = null;
+			try {
+				pc.close();
+			} catch(error) {
+				console.error("Error closing Peer connection:", error);
+			}
+			pc = null;
 		}
 		if (peerDataChannel) {
 			try {
@@ -163,28 +192,26 @@ export function Webcam() {
 		stopStreaming();
 	}
 
-	async function createWebrtcOffer() {
-		offerCreated = false;
-		if (!ws) {
-			console.log("No WebSocket. Cannot create offer.");
-			// Will be created when ws opens
-			return;
-		}
-		const offer = await pc.createOffer();
-		await pc.setLocalDescription(offer);
-		ws.send(JSON.stringify({ sdp: offer }));
+	async function tryCreateWebrtcOffer() {
+		if (!pc || !videoStream) return;
+		console.log("Creating offer...")
 
-		offerCreated = true;
+		const offer = await pc.createOffer();
+		if (!pc) return;
+		await pc.setLocalDescription(offer);
+		if (!ws) return;
+		ws.send(JSON.stringify({ sdp: offer }));
 	}
 
 	// Capture Video Stream
-	let debounce = false;
+	let debounce = false, isCapturing = false;
 	async function restartCapture() {
 		if (debounce) return;
 		console.log("Restarting capture");
 
 		debounce = true;
 		stopCapture();
+		isCapturing = true;
 
 		const [width, height] = resolutionSelect.value.split("x").map(Number);
 		try {
@@ -200,7 +227,11 @@ export function Webcam() {
 			});
 			debounce = false;
 
-			if (!videoStream) return; // Was stopped
+			if (!isCapturing) {
+				// Was stopped
+				stopCapture();
+				return;
+			}
 
 			videoElement.srcObject = videoStream;
 			console.log(`Camera access granted at ${width}x${height}`);
@@ -209,62 +240,75 @@ export function Webcam() {
 			const capabilities = track.getCapabilities();
 			console.log("Camera Capabilities:", capabilities);
 
-			// Audio track
-			const audioTrack = videoStream.getAudioTracks()[0];
-			if (audioTrack) {
-				peerAudioTrack = pc.addTrack(audioTrack, videoStream);
-				console.log("Audio track added to WebRTC connection.");
-			} else {
-				console.warn("No audio track found.");
-			}
-
-			offerCreated = false;
-			createWebrtcOffer();
+			tryAddAudioTrack();
 		} catch (error) {
 			console.error("Error accessing camera/audio:", error);
+			debounce = false;
 		}
 	}
 	function stopCapture() {
+		isCapturing = false;
 		if (!videoStream) return;
 		console.log("Stopping capture")
 
-		offerCreated = false;
 		videoElement.srcObject = null;
 
 		videoStream.getTracks().forEach((track) => {
 			track.stop();
 		});
-		if (peerAudioTrack) {
+		videoStream = null;
+
+		if (pc && peerAudioTrack) {
 			pc.removeTrack(peerAudioTrack);
 		}
-		videoStream = null;
+		peerAudioTrack = null;
+	}
+	function tryAddAudioTrack() {
+		if (!pc || !videoStream || !streamingBtnClicked || peerAudioTrack) return;
+		const audioTrack = videoStream.getAudioTracks()[0];
+		if (audioTrack) {
+			peerAudioTrack = pc.addTrack(audioTrack, videoStream);
+			console.log("Audio track added to WebRTC connection.");
+		} else {
+			console.warn("No audio track found.");
+		}
+		tryCreateWebrtcOffer();
+	}
+
+	function shouldBeConnected() {
+		return streamingBtnClicked || isMenuOpen;
 	}
 
 	// Custom event created in web/share/js/wm.js
 	webcamMenu.addEventListener("openChanged", (e) => {
 		if (e.detail.open) {
+			isMenuOpen = true;
 			if (!videoStream) {
 				restartCapture();
 			}
 			if (!ws) {
-				connect();
+				connectWs();
 			}
-		} else if (!streamingBtnClicked) {
-			disconnect();
-			stopCapture();
+		} else {
+			isMenuOpen = false;
+			if (!shouldBeConnected()) {
+				disconnectAll();
+				stopCapture();
+			}
 		}
 	});
 
-	let frameIntervalId;  // Store the interval reference to clear it later
-	let frameInterval = 1000 / 30; // Frame interval for 30 FPS
+	const FRAME_INTERVAL = 1000 / 30; // Frame interval for 30 FPS
+	let frameIntervalId = null;  // Store the interval reference to clear it later
 	let lastFrameTime = 0;  // Last time a frame was sent (in ms)
 	let frameCount = 0;     // Counter for frames sent in the current second
 
 	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
 	function startStreaming() {
-		if (frameIntervalId) return;
+		if (frameIntervalId !== null) return;
+		tryAddAudioTrack();
+		
 		frameIntervalId = setInterval(() => {
-			if (!streamingBtnClicked) return;
 			if (!videoElement.videoWidth || !videoElement.videoHeight) return;
 
 			// Set canvas size
@@ -274,13 +318,14 @@ export function Webcam() {
 			// Draw the current frame onto the canvas
 			ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-			if (streamingBtnClicked && peerDataChannel.readyState === "open") {
+			if (!peerDataChannel || !streamingBtnClicked) return;
+			if (peerDataChannel.readyState === "open") {
 				updateUi_isActuallyStreaming(true);
 			}
 
 			// Send as MJPEG (if available)
 			canvas.toBlob((blob) => {
-				if (peerDataChannel.readyState !== "open") return;
+				if (!streamingBtnClicked || !peerDataChannel || peerDataChannel.readyState !== "open") return;
 				peerDataChannel.send(blob);
 
 				// Calculate FPS
@@ -295,15 +340,23 @@ export function Webcam() {
 					frameCount = 0;      // Reset frame count for the next second
 				}
 			}, "image/jpeg", 0.4);
-		}, frameInterval);  // Send a frame every "frameInterval" milliseconds (e.g., 33ms for 30 FPS)
+		}, FRAME_INTERVAL);  // Send a frame every "frameInterval" milliseconds (e.g., 33ms for 30 FPS)
 	}
 
 	// Stop sending frames
 	function stopStreaming() {
-		if (!frameIntervalId) return;
-		updateUi_isActuallyStreaming(false);
+		if (frameIntervalId === null) return;
 		clearInterval(frameIntervalId);
 		frameIntervalId = null;
+
+		updateUi_isActuallyStreaming(false);
+		frameCount = 0;
+		lastFrameTime = 0;
+
+		if (pc && peerAudioTrack) {
+			pc.removeTrack(peerAudioTrack);
+		}
+		peerAudioTrack = null;
 	}
 
 	// Start streaming when button is clicked
@@ -312,12 +365,25 @@ export function Webcam() {
 		startButton.textContent = streamingBtnClicked ? "Stop Streaming" : "Start Streaming";
 
 		if (streamingBtnClicked) {
+			videoElement.muted = true;
 			startStreaming();  // Begin sending frames when streaming starts
 		} else {
+			videoElement.muted = false;
 			stopStreaming();   // Stop sending frames when streaming stops
 		}
 	});
 
 	// Trigger a capture with the selected resolution when it changes
-	resolutionSelect.addEventListener("change", restartCapture)
+	resolutionSelect.addEventListener("change", restartCapture);
+
+	self.init = () => {
+		isInit = true;
+		if (streamingBtnClicked) {
+			startStreaming();
+		}
+	}
+	self.cleanup = () => {
+		isInit = false;
+		disconnectAll();
+	}
 }
