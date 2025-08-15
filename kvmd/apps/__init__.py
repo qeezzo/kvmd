@@ -436,11 +436,6 @@ def _get_config_scheme() -> dict:
                 # Dynamic content
             },
 
-            # "uvc": {
-            #     "type": Option("", type=valid_stripped_string_not_empty),
-            #     # Dynamic content
-            # },
-
             "streamer": {
                 "forever": Option(False, type=valid_bool),
 

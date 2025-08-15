@@ -32,7 +32,7 @@ import {Atx} from "./atx.js";
 import {Msd} from "./msd.js";
 import {Streamer} from "./stream.js";
 import {Gpio} from "./gpio.js";
-import { Webcam } from "./webcam.js";
+import {Webcam} from "./webcam.js";
 import {Ocr} from "./ocr.js";
 
 
@@ -52,8 +52,12 @@ export function Session() {
 	var __atx = new Atx(__recorder);
 	var __msd = new Msd();
 	var __gpio = new Gpio(__recorder);
+<<<<<<< HEAD
 	// var __webcam = new Webcam(__streamer.getGeometry);
+=======
+>>>>>>> eec7f9f3 (Fix bugs)
 	var __ocr = new Ocr(__streamer.getGeometry);
+	var __webcam = new Webcam();
 
 	var __info_hw_state = null;
 	var __info_fan_state = null;
@@ -365,7 +369,6 @@ export function Session() {
 			case "atx_state": __atx.setState(data.event); break;
 			case "msd_state": __msd.setState(data.event); break;
 			case "streamer_state": __streamer.setState(data.event); break;
-			// case "streamer_webcam_state": __webcam.setState(data.event); break;
 			case "streamer_ocr_state": __ocr.setState(data.event); break;
 		}
 	};
@@ -389,8 +392,11 @@ export function Session() {
 			__ping_timer = null;
 		}
 		
+<<<<<<< HEAD
 	
 		// __webcam.setState(null);
+=======
+>>>>>>> eec7f9f3 (Fix bugs)
 		__ocr.setState(null);
 		__gpio.setState(null);
 		__hid.setSocket(null);

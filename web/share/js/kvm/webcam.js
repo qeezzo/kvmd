@@ -19,165 +19,305 @@
 #                                                                            #
 *****************************************************************************/
 
-
 "use strict";
 
-
-import {tools, $} from "../tools.js";
-import {wm} from "../wm.js";
-
-
-export function Webcam(__getGeometry) {
+export function Webcam() {
 	var self = this;
 
-	/************************************************************************/
+	const videoElement = document.getElementById("localVideo");
+	const canvas = document.getElementById("canvas");
+	const ctx = canvas.getContext("2d");
+	const resolutionSelect = document.getElementById("resolution");
+	const startButton = document.getElementById("startButton");
+	const webcamDropdown = document.getElementById("webcam-dropdown")
+	const webcamMenu = document.getElementById("webcam-menu")
 
-	var __start_pos = null;
-	var __end_pos = null;
-	var __selection = null;
-
-	var __init__ = function() {
-		tools.el.setOnClick($("stream-webcam-button"), function() {
-			__resetSelection();
-			wm.showWindow($("webcam-window"));
-			wm.showWindow($("stream-webcam-window"));
-		});
-
-		$("stream-webcam-lang-selector").addEventListener("change", function() {
-			tools.storage.set("stream.webcam.lang", $("stream-webcam-lang-selector").value);
-		});
-
-		$("stream-webcam-window").addEventListener("blur", __resetSelection);
-		$("stream-webcam-window").addEventListener("resize", __resetSelection);
-		$("stream-webcam-window").close_hook = __resetSelection;
-
-		$("stream-webcam-window").onkeyup = function(event) {
-			event.preventDefault();
-			if (event.code === "Enter") {
-				if (__selection) {
-					__recognizeSelection();
-					wm.closeWindow($("stream-webcam-window"));
-				}
-			} else if (event.code === "Escape") {
-				wm.closeWindow($("stream-webcam-window"));
-			}
-		};
-
-		$("stream-webcam-window").onmousedown = __startSelection;
-		$("stream-webcam-window").onmousemove = __changeSelection;
-		$("stream-webcam-window").onmouseup = __endSelection;
-	};
-
-	/************************************************************************/
-
-	self.setState = function(state) {
-		let enabled = (state && state.webcam.enabled && !tools.browser.is_mobile);
-		if (enabled) {
-			let el = $("stream-webcam-lang-selector");
-			tools.selector.setValues(el, state.webcam.langs.available);
-			tools.selector.setSelectedValue(el, tools.storage.get("stream.webcam.lang", state.webcam.langs["default"]));
-		}
-		tools.feature.setEnabled($("stream-webcam"), enabled);
-		$("stream-webcam-led").className = (enabled ? "led-gray" : "hidden");
-	};
-
-	var __startSelection = function(event) {
-		if (__start_pos === null) {
-			tools.hidden.setVisible($("stream-webcam-selection"), false);
-			__start_pos = __getGlobalPosition(event);
-			__end_pos = null;
-		}
-	};
-
-	var __changeSelection = function(event) {
-		if (__start_pos !== null) {
-			__end_pos = __getGlobalPosition(event);
-			let width = Math.abs(__start_pos.x - __end_pos.x);
-			let height = Math.abs(__start_pos.y - __end_pos.y);
-			let el_selection = $("stream-webcam-selection");
-			el_selection.style.left = Math.min(__start_pos.x, __end_pos.x) + "px";
-			el_selection.style.top = Math.min(__start_pos.y, __end_pos.y) + "px";
-			el_selection.style.width = width + "px";
-			el_selection.style.height = height + "px";
-			tools.hidden.setVisible(el_selection, (width > 1 || height > 1));
-		}
-	};
-
-	var __endSelection = function(event) {
-		__changeSelection(event);
-		let el_selection = $("stream-webcam-selection");
-		let ok = (
-			el_selection.offsetWidth > 1 && el_selection.offsetHeight > 1
-			&& __start_pos !== null && __end_pos !== null
-		);
-		tools.hidden.setVisible(el_selection, ok);
-		if (ok) {
-			let rect = $("webcam-box").getBoundingClientRect();
-			let rel_left = Math.min(__start_pos.x, __end_pos.x) - rect.left;
-			let rel_right = Math.max(__start_pos.x, __end_pos.x) - rect.left;
-			let offset = __getNavbarOffset();
-			let rel_top = Math.min(__start_pos.y, __end_pos.y) - rect.top + offset;
-			let rel_bottom = Math.max(__start_pos.y, __end_pos.y) - rect.top + offset;
-			let geo = __getGeometry();
-			__selection = {
-				"left": tools.remap(rel_left, geo.x, geo.width, 0, geo.real_width),
-				"right": tools.remap(rel_right, geo.x, geo.width, 0, geo.real_width),
-				"top": tools.remap(rel_top, geo.y, geo.height, 0, geo.real_height),
-				"bottom": tools.remap(rel_bottom, geo.y, geo.height, 0, geo.real_height),
-			};
+	function updateUi_isConnected(connected) {
+		if (connected) {
+			webcamMenu.classList.add("connected");
 		} else {
-			__selection = null;
+			webcamMenu.classList.remove("connected");
 		}
-		__start_pos = null;
-		__end_pos = null;
-	};
-
-	var __getGlobalPosition = function(event) {
-		let rect = $("stream-box").getBoundingClientRect();
-		let geo = __getGeometry();
-		let offset = __getNavbarOffset();
-		return {
-			"x": Math.min(Math.max(event.clientX, rect.left + geo.x), rect.right - geo.x),
-			"y": Math.min(Math.max(event.clientY - offset, rect.top + geo.y - offset), rect.bottom - geo.y - offset),
-		};
-	};
-
-	var __getNavbarOffset = function() {
-		if (tools.browser.is_firefox) {
-			// На лисе наблюдается оффсет из-за навбара, хз почему
-			return wm.getViewGeometry().top;
+	}
+	function updateUi_isActuallyStreaming(streaming) {
+		if (streaming) {
+			webcamDropdown.classList.add('streaming');
+		} else {
+			webcamDropdown.classList.remove('streaming');
 		}
-		return 0;
+	}
+
+	let ws;
+	let videoStream;
+	let streamingBtnClicked = false;
+	let offerCreated = false;
+
+	let peerDataChannel;
+	let peerAudioTrack;
+	const pc = new RTCPeerConnection();
+	pc.onicecandidate = (event) => {
+		if (event.candidate) {
+			console.log("Sending ICE candidate");
+			ws.send(JSON.stringify({ ice: event.candidate }));
+		}
 	};
+	pc.onconnectionstatechange = () => console.log("Peer connection state:", pc.connectionState);
 
-	var __resetSelection = function() {
-		tools.hidden.setVisible($("stream-webcam-selection"), false);
-		__start_pos = null;
-		__end_pos = null;
-		__selection = null;
-	};
-
-	var __recognizeSelection = function() {
-		tools.el.setEnabled($("stream-webcam-button"), false);
-		tools.el.setEnabled($("stream-webcam-lang-selector"), false);
-		$("stream-webcam-led").className = "led-yellow-rotating-fast";
-
-		let lang = $("stream-webcam-lang-selector").value;
-		let url = `/api/streamer/snapshot?webcam=1&webcam_langs=${lang}`;
-		url += `&webcam_left=${__selection.left}&webcam_top=${__selection.top}`;
-		url += `&webcam_right=${__selection.right}&webcam_bottom=${__selection.bottom}`;
-
-		tools.httpGet(url, function(http) {
-			if (http.status === 200) {
-				wm.copyTextToClipboard(http.responseText);
-			} else {
-				wm.error("webcam error:<br>", http.responseText);
+	function setupPeerDataChannel() {
+		if (peerDataChannel) return;
+		console.log("Setting up Peer Data Channel...")
+		peerDataChannel = pc.createDataChannel("mjpegStream");
+		peerDataChannel.onopen = () => {
+			if (streamingBtnClicked) {
+				updateUi_isActuallyStreaming(true);
 			}
-			tools.el.setEnabled($("stream-webcam-button"), true);
-			tools.el.setEnabled($("stream-webcam-lang-selector"), true);
-			$("stream-webcam-led").className = "led-gray";
-		}, null, null, 30000);
-	};
+			console.log("Peer DataChannel opened");
+		}
+		peerDataChannel.onclose = () => {
+			updateUi_isActuallyStreaming(false);
+			peerDataChannel = null;
+			console.log("Peer DataChannel closed");
+		}
+	}
 
-	__init__();
+	function tryReconnect() {
+		webcamMenu.classList.remove("connecting", "connected");
+		webcamMenu.classList.add("failed");
+		setTimeout(() => {
+			webcamMenu.classList.remove("failed");
+
+			if (videoStream) {
+				connect();
+			};
+		}, 1000);
+	}
+
+	function connect() {
+		if (ws && ws.readyState === WebSocket.OPEN) {
+			console.log("Already connected");
+			return;
+		}
+
+		console.log("Connecting WebSocket...")
+
+		webcamMenu.classList.remove("failed", "connected");
+		webcamMenu.classList.add("connecting")
+
+		const ws_host = window.location.hostname;
+		const ws_port = 3000;
+
+		try {
+			ws = new WebSocket(`wss://${ws_host}:${ws_port}`);
+			ws.onopen = () => {
+				console.log("WebSocket connected");
+				updateUi_isConnected(true)
+
+				setupPeerDataChannel();
+				if (!offerCreated) {
+					try {
+						createWebrtcOffer();
+					} catch(error) {
+						console.error("Offer creation failed", error);
+					}
+				}
+			};
+			ws.onmessage = async (message) => {
+				const msg = JSON.parse(message.data);
+				if (msg.sdp) {
+					await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+				} else if (msg.ice) {
+					await pc.addIceCandidate(new RTCIceCandidate(msg.ice));
+				}
+			};
+			ws.onclose = () => {
+				console.log("WebSocket closed");
+				updateUi_isConnected(false);
+				tryReconnect();
+			};
+			ws.onerror = (err) => {
+				console.error("WebSocket error", err);
+			};
+		} catch (error) {
+			console.log("WebSocket connect failed", error);
+			tryReconnect();
+		}
+	}
+	function disconnect() {
+		console.log("Disconnecting...")
+		if (ws) {
+			try {
+				ws.close();
+			} catch(error) {
+				console.error("Error closing WebSocket:", error);
+			}
+			ws = null;
+		}
+		if (peerDataChannel) {
+			try {
+				peerDataChannel.close();
+			} catch(error) {
+				console.error("Error closing Peer DataChannel:", error);
+			}
+			peerDataChannel = null;
+		}
+		stopStreaming();
+	}
+
+	async function createWebrtcOffer() {
+		offerCreated = false;
+		if (!ws) {
+			console.log("No WebSocket. Cannot create offer.");
+			// Will be created when ws opens
+			return;
+		}
+		const offer = await pc.createOffer();
+		await pc.setLocalDescription(offer);
+		ws.send(JSON.stringify({ sdp: offer }));
+
+		offerCreated = true;
+	}
+
+	// Capture Video Stream
+	let debounce = false;
+	async function restartCapture() {
+		if (debounce) return;
+		console.log("Restarting capture");
+
+		debounce = true;
+		stopCapture();
+
+		const [width, height] = resolutionSelect.value.split("x").map(Number);
+		try {
+			videoStream = await navigator.mediaDevices.getUserMedia({
+				video: {
+					mimeType: "image/jpeg",
+					width,
+					height
+				},
+				audio: {
+					codec: "opus",
+				}
+			});
+			debounce = false;
+
+			if (!videoStream) return; // Was stopped
+
+			videoElement.srcObject = videoStream;
+			console.log(`Camera access granted at ${width}x${height}`);
+
+			const track = videoStream.getVideoTracks()[0];
+			const capabilities = track.getCapabilities();
+			console.log("Camera Capabilities:", capabilities);
+
+			// Audio track
+			const audioTrack = videoStream.getAudioTracks()[0];
+			if (audioTrack) {
+				peerAudioTrack = pc.addTrack(audioTrack, videoStream);
+				console.log("Audio track added to WebRTC connection.");
+			} else {
+				console.warn("No audio track found.");
+			}
+
+			offerCreated = false;
+			createWebrtcOffer();
+		} catch (error) {
+			console.error("Error accessing camera/audio:", error);
+		}
+	}
+	function stopCapture() {
+		if (!videoStream) return;
+		console.log("Stopping capture")
+
+		offerCreated = false;
+		videoElement.srcObject = null;
+
+		videoStream.getTracks().forEach((track) => {
+			track.stop();
+		});
+		if (peerAudioTrack) {
+			pc.removeTrack(peerAudioTrack);
+		}
+		videoStream = null;
+	}
+
+	// Custom event created in web/share/js/wm.js
+	webcamMenu.addEventListener("openChanged", (e) => {
+		if (e.detail.open) {
+			if (!videoStream) {
+				restartCapture();
+			}
+			if (!ws) {
+				connect();
+			}
+		} else if (!streamingBtnClicked) {
+			disconnect();
+			stopCapture();
+		}
+	});
+
+	let frameIntervalId;  // Store the interval reference to clear it later
+	let frameInterval = 1000 / 30; // Frame interval for 30 FPS
+	let lastFrameTime = 0;  // Last time a frame was sent (in ms)
+	let frameCount = 0;     // Counter for frames sent in the current second
+
+	// Send Frames with Controlled FPS (Handles MJPEG & Raw Automatically)
+	function startStreaming() {
+		if (frameIntervalId) return;
+		frameIntervalId = setInterval(() => {
+			if (!streamingBtnClicked) return;
+			if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+
+			// Set canvas size
+			canvas.width = videoElement.videoWidth;
+			canvas.height = videoElement.videoHeight;
+
+			// Draw the current frame onto the canvas
+			ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+			if (streamingBtnClicked && peerDataChannel.readyState === "open") {
+				updateUi_isActuallyStreaming(true);
+			}
+
+			// Send as MJPEG (if available)
+			canvas.toBlob((blob) => {
+				if (peerDataChannel.readyState !== "open") return;
+				peerDataChannel.send(blob);
+
+				// Calculate FPS
+				let now = performance.now(); // Get current time in milliseconds
+				frameCount++;
+
+				// If more than 1 second has passed, log FPS
+				if (now - lastFrameTime >= 1000) {
+					let actualFPS = frameCount;
+					console.log(`Actual FPS: ${actualFPS}`);
+					lastFrameTime = now; // Update last frame time
+					frameCount = 0;      // Reset frame count for the next second
+				}
+			}, "image/jpeg", 0.4);
+		}, frameInterval);  // Send a frame every "frameInterval" milliseconds (e.g., 33ms for 30 FPS)
+	}
+
+	// Stop sending frames
+	function stopStreaming() {
+		if (!frameIntervalId) return;
+		updateUi_isActuallyStreaming(false);
+		clearInterval(frameIntervalId);
+		frameIntervalId = null;
+	}
+
+	// Start streaming when button is clicked
+	startButton.addEventListener("click", () => {
+		streamingBtnClicked = !streamingBtnClicked;
+		startButton.textContent = streamingBtnClicked ? "Stop Streaming" : "Start Streaming";
+
+		if (streamingBtnClicked) {
+			startStreaming();  // Begin sending frames when streaming starts
+		} else {
+			stopStreaming();   // Stop sending frames when streaming stops
+		}
+	});
+
+	// Trigger a capture with the selected resolution when it changes
+	resolutionSelect.addEventListener("change", restartCapture)
 }
