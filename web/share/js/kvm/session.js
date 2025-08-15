@@ -52,10 +52,6 @@ export function Session() {
 	var __atx = new Atx(__recorder);
 	var __msd = new Msd();
 	var __gpio = new Gpio(__recorder);
-<<<<<<< HEAD
-	// var __webcam = new Webcam(__streamer.getGeometry);
-=======
->>>>>>> eec7f9f3 (Fix bugs)
 	var __ocr = new Ocr(__streamer.getGeometry);
 	var __webcam = new Webcam();
 
@@ -393,11 +389,6 @@ export function Session() {
 			__ping_timer = null;
 		}
 		
-<<<<<<< HEAD
-	
-		// __webcam.setState(null);
-=======
->>>>>>> eec7f9f3 (Fix bugs)
 		__ocr.setState(null);
 		__gpio.setState(null);
 		__hid.setSocket(null);
