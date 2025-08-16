@@ -32,7 +32,8 @@ export function Webcam() {
 	const startButton = document.getElementById("startButton");
 	const webcamDropdown = document.getElementById("webcam-dropdown")
 	const webcamMenu = document.getElementById("webcam-menu")
-
+	const webcamLed = document.getElementById("webcam-led")
+	
 	function updateUi_isConnected(connected) {
 		if (connected) {
 			webcamMenu.classList.add("connected");
@@ -40,7 +41,7 @@ export function Webcam() {
 			webcamMenu.classList.remove("connected");
 		}
 	}
-	function updateUi_isActuallyStreaming(streaming) {
+	function updateUi_isStreamingClicked(streaming) {
 		if (streaming) {
 			webcamDropdown.classList.add('streaming');
 		} else {
@@ -53,10 +54,42 @@ export function Webcam() {
 	let videoStream;
 	let streamingBtnClicked = false;
 	let isMenuOpen = false;
+	let isCapturing = false;
 
 	let pc;
 	let peerDataChannel;
 	let peerAudioTrack;
+
+	var __updateOnlineLeds = function() {
+		let led = "led-gray";
+		let title = "Webcam OFF";
+
+		if (isCapturing && pc) {
+			if (videoStream) {
+				if (pc.connectionState === "connecting" || pc.connectionState === "new") {
+					led = "led-yellow";
+					title = "Webcam connecting";
+				} else if (pc.connectionState === "connected") {
+					if (streamingBtnClicked) {
+						led = "led-green";
+						title = "Webcam retranslated";
+					} else {
+						led = "led-yellow";
+						title = "Webcam prepared";
+					}
+				} else if (pc.connectionState === "disconnected" || pc.connectionState === "failed") {
+					led = "led-red";
+					title = "Webcam failed";
+				}
+			} else {
+				led = "led-red";
+				title = "Webcam not granted";
+			}
+		}
+		webcamLed.className = led;
+		webcamLed.title = title;
+	};
+	__updateOnlineLeds();
 
 	function setupPeerConnection() {
 		if (pc) return;
@@ -69,20 +102,21 @@ export function Webcam() {
 				ws.send(JSON.stringify({ ice: event.candidate }));
 			}
 		};
-		pc.onconnectionstatechange = () => console.log("Peer connection state:", pc.connectionState);
-		
+		pc.onconnectionstatechange = () => {
+			console.log("Peer connection state:", pc.connectionState);
+			__updateOnlineLeds();
+		}
+		console.log(pc.connectionState)
 		peerDataChannel = pc.createDataChannel("mjpegStream");
 		peerDataChannel.onopen = () => {
-			if (streamingBtnClicked) {
-				updateUi_isActuallyStreaming(true);
-			}
 			console.log("Peer DataChannel opened");
 		}
 		peerDataChannel.onclose = () => {
-			updateUi_isActuallyStreaming(false);
 			peerDataChannel = null;
 			console.log("Peer DataChannel closed");
 		}
+
+		__updateOnlineLeds();
 	}
 
 	let reconnectionId = null;
@@ -115,6 +149,10 @@ export function Webcam() {
 	}
 	function connectWs() {
 		if (ws) return;
+		if (!isInit) {
+			tryReconnectWs();
+			return;
+		}
 
 		console.log("Connecting WebSocket...")
 
@@ -180,6 +218,7 @@ export function Webcam() {
 				console.error("Error closing Peer connection:", error);
 			}
 			pc = null;
+			__updateOnlineLeds();
 		}
 		if (peerDataChannel) {
 			try {
@@ -204,12 +243,12 @@ export function Webcam() {
 	}
 
 	// Capture Video Stream
-	let debounce = false, isCapturing = false;
+	let _captureDebounce = false;
 	async function restartCapture() {
-		if (debounce) return;
+		if (_captureDebounce) return;
 		console.log("Restarting capture");
 
-		debounce = true;
+		_captureDebounce = true;
 		stopCapture();
 		isCapturing = true;
 
@@ -225,7 +264,7 @@ export function Webcam() {
 					codec: "opus",
 				}
 			});
-			debounce = false;
+			_captureDebounce = false;
 
 			if (!isCapturing) {
 				// Was stopped
@@ -240,10 +279,11 @@ export function Webcam() {
 			const capabilities = track.getCapabilities();
 			console.log("Camera Capabilities:", capabilities);
 
+			__updateOnlineLeds();
 			tryAddAudioTrack();
 		} catch (error) {
 			console.error("Error accessing camera/audio:", error);
-			debounce = false;
+			_captureDebounce = false;
 		}
 	}
 	function stopCapture() {
@@ -251,6 +291,7 @@ export function Webcam() {
 		if (!videoStream) return;
 		console.log("Stopping capture")
 
+		__updateOnlineLeds();
 		videoElement.srcObject = null;
 
 		videoStream.getTracks().forEach((track) => {
@@ -319,9 +360,6 @@ export function Webcam() {
 			ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
 			if (!peerDataChannel || !streamingBtnClicked) return;
-			if (peerDataChannel.readyState === "open") {
-				updateUi_isActuallyStreaming(true);
-			}
 
 			// Send as MJPEG (if available)
 			canvas.toBlob((blob) => {
@@ -349,7 +387,6 @@ export function Webcam() {
 		clearInterval(frameIntervalId);
 		frameIntervalId = null;
 
-		updateUi_isActuallyStreaming(false);
 		frameCount = 0;
 		lastFrameTime = 0;
 
@@ -363,6 +400,7 @@ export function Webcam() {
 	startButton.addEventListener("click", () => {
 		streamingBtnClicked = !streamingBtnClicked;
 		startButton.textContent = streamingBtnClicked ? "Stop Streaming" : "Start Streaming";
+		updateUi_isStreamingClicked(streamingBtnClicked);
 
 		if (streamingBtnClicked) {
 			videoElement.muted = true;
@@ -371,6 +409,8 @@ export function Webcam() {
 			videoElement.muted = false;
 			stopStreaming();   // Stop sending frames when streaming stops
 		}
+
+		__updateOnlineLeds();
 	});
 
 	// Trigger a capture with the selected resolution when it changes
