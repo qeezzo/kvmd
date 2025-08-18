@@ -139,7 +139,6 @@ export function Webcam() {
 			};
 		}
 		reconnectionId = setInterval(reconnect, 1000);
-		reconnect();
 	}
 	function cancelReconnection() {
 		if (reconnectionId !== null) {
